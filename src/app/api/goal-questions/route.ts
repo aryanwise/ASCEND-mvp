@@ -17,7 +17,8 @@ Rules:
 - Return ONLY a JSON array: ["q1", "q2", "q3"]`;
 
   const response = await groq.chat.completions.create({
-    model: 'deepseek-r1-distill-llama-70b',
+    // model: 'deepseek-r1-distill-llama-70b',
+    model: 'llama-3.3-70b-versatile',
     max_tokens: 400,
     messages: [
       { role: 'system', content: system },
