@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const qa = (dialogue as {role:string;content:string}[]).map(m => `${m.role}: ${m.content}`).join('\n');
 
   const res = await groq.chat.completions.create({
-    model: 'deepseek-r1-distill-llama-70b',
+    model: 'llama-3.3-70b-versatile',
     max_tokens: 700,
     messages: [
       {

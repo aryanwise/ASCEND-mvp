@@ -43,7 +43,7 @@ export default function AuthPage() {
     // Check onboarded
     const { data: profile } = await supabase
       .from('profiles').select('onboarded').eq('id', data.user.id).single();
-    router.replace(profile?.onboarded ? '/app' : '/onboard');
+    window.location.href = profile?.onboarded ? '/app' : '/onboard';
   };
 
   return (

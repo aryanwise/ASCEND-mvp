@@ -58,16 +58,33 @@ export default function Onboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  const submitAnswer = () => {
-    if (!answer.trim()) return;
-    setDialogue(d => [...d,
-      { role: 'assistant', content: questions[qIdx] },
-      { role: 'user',      content: answer.trim()   },
-    ]);
+  const submitAnswer = async () => {
+  if (!answer.trim()) return;
+  const isIdk = /^(idk|i don't know|not sure|unsure|no idea|idk|dunno|maybe|hmm)/i.test(answer.trim());
+
+  if (isIdk) {
+    // Rephrase the same question
+    const res = await fetch('/api/goal-questions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ area: goalArea, goalText, rephrase: true, previousQuestion: questions[qIdx] }),
+    });
+    const data = await res.json();
+    const newQ = data.questions?.[0] ?? questions[qIdx];
+    const updated = [...questions];
+    updated[qIdx] = newQ;
+    setQuestions(updated);
     setAnswer('');
-    if (qIdx < questions.length - 1) setQIdx(i => i + 1);
-    else setStep('motivation');
-  };
+    return;
+  }
+
+  setDialogue(d => [...d,
+    { role: 'assistant', content: questions[qIdx] },
+    { role: 'user', content: answer.trim() },
+  ]);
+  setAnswer('');
+  if (qIdx < questions.length - 1) setQIdx(i => i + 1);
+  else setStep('motivation');
+};
 
   const finish = async () => {
     if (!user) return;
