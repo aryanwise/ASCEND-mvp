@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Home, Target, Plus, X, Sparkles, BarChart3, Feather } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
