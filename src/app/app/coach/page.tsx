@@ -101,7 +101,7 @@ export default function Coach() {
       const aiMsg:ChatMessage={role:'assistant',content:reply};
       setMsgs([...next,aiMsg]); await save(aiMsg);
       // Extract memory in background
-      if(next.length>=4){fetch('/api/memory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:user.id,conversation:[...next,aiMsg]})});}
+      if(next.length>=4 && user){fetch('/api/memory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:user.id,conversation:[...next,aiMsg]})});}
     } catch {
       setMsgs(m=>[...m,{role:'assistant',content:"Server error. Try again."}]);
     }
