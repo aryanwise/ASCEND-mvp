@@ -30,7 +30,7 @@ export default function AuthPage() {
   };
 
   const verifyOTP = async () => {
-    if (otp.length < 6) return;
+    if (otp.length < 8) return;
     setLoading(true); setError('');
     const { data, error: e } = await supabase.auth.verifyOtp({
       email: email.trim().toLowerCase(),
@@ -100,13 +100,13 @@ export default function AuthPage() {
               type="number"
               inputMode="numeric"
               value={otp}
-              onChange={e => setOtp(e.target.value.slice(0, 6))}
+              onChange={e => setOtp(e.target.value.slice(0, 8))}
               onKeyDown={e => e.key === 'Enter' && verifyOTP()}
               placeholder="000000"
               style={{ width:'100%', padding:'16px', borderRadius:14, border:'1px solid rgba(26,24,21,0.12)', background:'#fff', fontSize:24, fontWeight:700, color:'#1A1815', outline:'none', textAlign:'center', letterSpacing:'8px', marginBottom:12 }}
             />
             {error && <div style={{ fontSize:12, color:'#D9531E', marginBottom:10 }}>{error}</div>}
-            <button onClick={verifyOTP} disabled={otp.length < 6 || loading} className="btn-primary">
+            <button onClick={verifyOTP} disabled={otp.length < 8 || loading} className="btn-primary">
               {loading ? <Loader2 size={16} style={{ animation:'spin 1s linear infinite' }} /> : <><span>Verify</span><ArrowRight size={16} /></>}
             </button>
             <button onClick={sendOTP} style={{ marginTop:14, background:'none', border:'none', cursor:'pointer', fontSize:13, color:'#A8A095', width:'100%', textAlign:'center' }}>
