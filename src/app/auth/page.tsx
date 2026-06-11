@@ -17,14 +17,19 @@ export default function AuthPage() {
   const [sent, setSent]         = useState(false);
 
   const handleSignup = async () => {
-    if (!email.trim() || !password.trim()) return;
-    if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
-    setLoading(true); setError('');
-    const { error: e } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password });
-    setLoading(false);
-    if (e) { setError(e.message); return; }
-    window.location.href = '/install';
-  };
+  if (!email.trim() || !password.trim()) return;
+  if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
+  setLoading(true); setError('');
+  const { error: e } = await supabase.auth.signUp({ 
+    email: email.trim().toLowerCase(), 
+    password 
+  });
+  setLoading(false);
+  if (e) { setError(e.message); return; }
+  // If already in standalone (installed), skip install page
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  window.location.href = isStandalone ? '/onboard' : '/install';
+};
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) return;

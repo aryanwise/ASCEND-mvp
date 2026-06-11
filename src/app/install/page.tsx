@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronRight, Check } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { detectPlatform, isInstalled } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 export default function Install() {
   const { user, loading } = useAuth();
@@ -11,10 +12,23 @@ export default function Install() {
   const platform = detectPlatform();
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) { router.replace('/auth'); return; }
-    if (isInstalled()) { router.replace('/onboard'); }
-  }, [user, loading, router]);
+  if (loading) return;
+  if (!user) {
+    router.replace('/auth');
+    return;
+  }
+  const check = async () => {
+    try {
+      const { data } = await supabase
+        .from('profiles').select('onboarded').eq('id', user.id).single();
+      // Skip install entirely — go straight to onboard or app
+      router.replace(data?.onboarded ? '/app' : '/onboard');
+    } catch {
+      router.replace('/onboard');
+    }
+  };
+  check();
+}, [user, loading, router]);
 
   const proceed = () => router.replace('/onboard');
 

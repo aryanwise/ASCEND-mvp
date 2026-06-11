@@ -5,6 +5,7 @@ import { ChevronRight, ChevronLeft, Sparkles, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { detectPlatform, isInstalled, registerSW, subscribePush } from '@/lib/utils';
 import type { AreaId, Archetype } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 type Step = 'install'|'profile'|'archetype'|'goal_area'|'goal_questions'|'motivation';
 
@@ -29,7 +30,7 @@ export default function Onboard() {
   const platform   = detectPlatform();
   const installed  = isInstalled();
 
-  const [step, setStep]           = useState<Step>(installed ? 'profile' : 'install');
+  const [step, setStep] = useState<Step>('profile');
   const [firstName, setFirstName] = useState('');
   const [lastName,  setLastName]  = useState('');
   const [age,       setAge]       = useState('');
@@ -87,25 +88,32 @@ export default function Onboard() {
 };
 
   const finish = async () => {
-    if (!user) return;
-    setSaving(true);
-    await fetch('/api/profile', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, firstName, lastName, age: age ? parseInt(age) : null, archetype }),
-    });
-    await fetch('/api/goals/create', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: user.id, area: goalArea, goalText, dialogue, motivation, archetype }),
-    });
-    registerSW().then(async reg => {
-      if (!reg) return;
-      if (Notification.permission === 'default') await Notification.requestPermission();
-      if (Notification.permission === 'granted') subscribePush(reg, user.id);
-    });
-    router.replace('/app');
-  };
+  setSaving(true);
 
-  const stepsList: Step[] = ['install','profile','archetype','goal_area','goal_questions','motivation'];
+  // Get userId directly from session (more reliable than context)
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData.session?.user?.id;
+
+  if (!userId) {
+    setSaving(false);
+    window.location.href = '/auth';
+    return;
+  }
+
+  await fetch('/api/profile', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, firstName, lastName, age: age ? parseInt(age) : null, archetype }),
+  });
+
+  await fetch('/api/goals/create', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, area: goalArea, goalText, dialogue, motivation, archetype }),
+  });
+
+  window.location.href = '/app';
+};
+
+  const stepsList: Step[] = ['profile','archetype','goal_area','goal_questions','motivation'];
   const stepNum = stepsList.indexOf(step);
 
   return (

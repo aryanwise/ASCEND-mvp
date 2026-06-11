@@ -10,20 +10,23 @@ export default function Root() {
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) { router.replace('/auth'); return; }
-
-    const check = async () => {
-      try {
-        const { data } = await supabase
-          .from('profiles').select('onboarded').eq('id', user.id).single();
-        router.replace(data?.onboarded ? '/app' : '/onboard');
-      } catch {
-        router.replace('/onboard');
-      }
-    };
-    check();
-  }, [user, loading, router]);
+  if (loading) return;
+  if (!user) {
+    router.replace('/auth');
+    return;
+  }
+  const check = async () => {
+    try {
+      const { data } = await supabase
+        .from('profiles').select('onboarded').eq('id', user.id).single();
+      // Skip install entirely — go straight to onboard or app
+      router.replace(data?.onboarded ? '/app' : '/onboard');
+    } catch {
+      router.replace('/onboard');
+    }
+  };
+  check();
+}, [user, loading, router]);
 
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100dvh', background:'#F8F5EF', gap:16 }}>
