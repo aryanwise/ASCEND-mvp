@@ -16,12 +16,20 @@ export default function AuthPage() {
   }
 
   async function routeAfterAuth(userId: string) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('onboarded')
-      .eq('id', userId)
-      .maybeSingle();
-    window.location.href = profile?.onboarded ? '/app' : '/onboard';
+    // Retry the onboarded read: right after sign-in the read can briefly return
+    // a stale/false value, which would wrongly send an onboarded user back to
+    // /onboard. Re-check a few times before deciding they're not onboarded.
+    let onboarded = false;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarded')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile?.onboarded) { onboarded = true; break; }
+      await new Promise((r) => setTimeout(r, 350));
+    }
+    window.location.href = onboarded ? '/app?onboarded=1' : '/onboard';
   }
 
   async function handle() {
