@@ -13,8 +13,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      // Wait for the session to actually hydrate after a hard navigation,
-      // instead of trusting a single immediate getSession() (the redirect race).
       const session = await waitForSession();
       if (!session) {
         window.location.href = isStandalone() ? '/auth' : '/install';
@@ -22,8 +20,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
       const id = session.user.id;
 
-      // Read onboarding status with one short retry, so a transient empty read
-      // right after navigation never bounces an onboarded user back to /onboard.
       let onboarded = false;
       for (let attempt = 0; attempt < 2; attempt++) {
         const { data: profile } = await supabase

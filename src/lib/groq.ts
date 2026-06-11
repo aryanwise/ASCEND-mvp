@@ -11,7 +11,6 @@ export async function groq(
 ): Promise<string> {
   const key = process.env.GROQ_API_KEY;
   if (!key) {
-    // Loud, specific failure instead of a silent empty response.
     throw new Error('GROQ_API_KEY is not set in this environment. Add it to .env.local (local) and Vercel → Settings → Environment Variables, then redeploy.');
   }
 

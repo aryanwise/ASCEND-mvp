@@ -7,7 +7,6 @@ import { FullLoader } from '@/components/ui';
 export default function SplashPage() {
   useEffect(() => {
     (async () => {
-      // Install-first: if not running as an installed PWA, always show install screen.
       if (!isStandalone()) {
         window.location.href = '/install';
         return;

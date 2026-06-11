@@ -4,15 +4,10 @@ import { groq, parseJSON, type GroqMsg } from '@/lib/groq';
 export const runtime = 'nodejs';
 export const maxDuration = 10;
 
-// Drives the onboarding as a real conversation. The model asks ONE question at a
-// time, adapts when the user is confused, and tells us when it has gathered enough
-// to build a plan. Returns either the next message, or done=true with a context summary.
-
 interface Turn { role: 'assistant' | 'user'; content: string; }
 interface Out {
   message: string;
   done: boolean;
-  // when done, a tight summary the plan generator can use
   context_summary?: string;
 }
 
@@ -50,12 +45,10 @@ No preamble, no markdown.`;
     const convo: GroqMsg[] = [{ role: 'system', content: system }];
     for (const t of turns) convo.push({ role: t.role, content: t.content });
 
-    // If this is the very first call (no history), prompt the model to open.
     if (turns.length === 0) {
       convo.push({ role: 'user', content: '(Begin the intake conversation now with your first question.)' });
     }
 
-    // Force wrap-up if conversation is running long.
     const forceDone = userTurns >= 5;
     if (forceDone) {
       convo.push({ role: 'user', content: '(You now have enough. Set done=true, give a short closing line, and write the context_summary.)' });
@@ -68,7 +61,6 @@ No preamble, no markdown.`;
       context_summary: `Goal: ${goal}. (Intake summary unavailable.)`,
     });
 
-    // Safety: never let it loop forever
     if (forceDone) out.done = true;
     if (out.done && !out.context_summary) {
       out.context_summary = turns.map((t) => `${t.role}: ${t.content}`).join(' | ');

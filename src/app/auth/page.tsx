@@ -5,107 +5,122 @@ import { C } from '@/lib/design';
 import { Logo, PrimaryButton } from '@/components/ui';
 
 export default function AuthPage() {
-  const [stage, setStage] = useState<'email' | 'code'>('email');
+  const [tab, setTab] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const [resent, setResent] = useState(false);
 
   function validEmail(e: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   }
 
-  async function sendCode(isResend = false) {
-    setErr('');
-    const e = email.trim().toLowerCase();
-    if (!validEmail(e)) { setErr('Enter a valid email address.'); return; }
-    setBusy(true);
-    // shouldCreateUser:true => same call signs up new users AND logs in existing ones.
-    const { error } = await supabase.auth.signInWithOtp({
-      email: e,
-      options: { shouldCreateUser: true },
-    });
-    setBusy(false);
-    if (error) { setErr(error.message); return; }
-    setEmail(e);
-    setStage('code');
-    if (isResend) { setResent(true); setTimeout(() => setResent(false), 3000); }
-  }
-
-  async function verify() {
-    setErr('');
-    const token = code.trim();
-    if (token.length < 6) { setErr('Enter the 6-digit code from your email.'); return; }
-    setBusy(true);
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token,
-      type: 'email',
-    });
-    if (error || !data.session) {
-      setBusy(false);
-      setErr(error?.message || 'That code didn\'t work. Try again.');
-      return;
-    }
-    // Session is now set inside the app. Route based on onboarding status.
+  async function routeAfterAuth(userId: string) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('onboarded')
-      .eq('id', data.session.user.id)
+      .eq('id', userId)
       .maybeSingle();
     window.location.href = profile?.onboarded ? '/app' : '/onboard';
+  }
+
+  async function handle() {
+    setErr('');
+    const e = email.trim().toLowerCase();
+    if (!validEmail(e)) { setErr('Enter a valid email address.'); return; }
+    if (password.length < 6) { setErr('Password must be at least 6 characters.'); return; }
+    setBusy(true);
+    try {
+      if (tab === 'signup') {
+        const { data, error } = await supabase.auth.signUp({ email: e, password });
+        if (error) throw error;
+        if (data.session?.user) {
+          await routeAfterAuth(data.session.user.id);
+          return;
+        }
+        const { data: si, error: siErr } = await supabase.auth.signInWithPassword({ email: e, password });
+        if (siErr || !si.session) {
+          throw new Error('Account created. Turn OFF "Confirm email" in Supabase to log in instantly.');
+        }
+        await routeAfterAuth(si.session.user.id);
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email: e, password });
+        if (error) throw error;
+        if (!data.session?.user) throw new Error('Could not sign in. Try again.');
+        await routeAfterAuth(data.session.user.id);
+      }
+    } catch (ex) {
+      const msg = (ex as Error).message || 'Something went wrong.';
+      if (/already registered|already exists/i.test(msg)) {
+        setErr('That email already has an account — switch to Sign In.');
+      } else if (/invalid login credentials/i.test(msg)) {
+        setErr('Wrong email or password.');
+      } else {
+        setErr(msg);
+      }
+      setBusy(false);
+    }
   }
 
   return (
     <div className="shell">
       <div className="scrollarea" style={{ padding: '0 24px' }}>
-        <div style={{ paddingTop: 'max(72px, env(safe-area-inset-top))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+        <div style={{ paddingTop: 'max(64px, env(safe-area-inset-top))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
           <Logo size={56} />
           <div className="serif" style={{ fontSize: 34, fontWeight: 600, letterSpacing: '0.03em' }}>Ascend</div>
-          <div style={{ color: C.muted, fontSize: 15, textAlign: 'center', maxWidth: 290, lineHeight: 1.5 }}>
-            {stage === 'email'
-              ? 'Sign in with your email. We\'ll send you a code — no password needed.'
-              : `Enter the 6-digit code we sent to ${email}.`}
+          <div style={{ color: C.muted, fontSize: 15, textAlign: 'center', maxWidth: 280, lineHeight: 1.5 }}>
+            Your cognitive partner for goals that actually stick.
           </div>
         </div>
 
-        {stage === 'email' ? (
-          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendCode()}
-              placeholder="you@email.com"
-              type="email"
-              inputMode="email"
-              autoCapitalize="none"
-              autoComplete="email"
-              style={inputStyle}
-            />
-            {err && <div style={{ color: '#C62828', fontSize: 13.5 }}>{err}</div>}
-            <PrimaryButton onClick={() => sendCode()} loading={busy}>Send me a code</PrimaryButton>
+        <div style={{ display: 'flex', gap: 8, background: C.sand, borderRadius: 14, padding: 5, marginTop: 40 }}>
+          {(['signin', 'signup'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTab(t); setErr(''); }}
+              style={{
+                flex: 1,
+                padding: '11px',
+                borderRadius: 10,
+                fontWeight: 600,
+                fontSize: 15,
+                background: tab === t ? '#fff' : 'transparent',
+                color: tab === t ? C.dark : C.muted,
+                boxShadow: tab === t ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+              }}
+            >
+              {t === 'signin' ? 'Sign In' : 'Sign Up'}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@email.com"
+            type="email"
+            inputMode="email"
+            autoCapitalize="none"
+            autoComplete="email"
+            style={inputStyle}
+          />
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handle()}
+            placeholder="Password"
+            type="password"
+            autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
+            style={inputStyle}
+          />
+          {err && <div style={{ color: '#C62828', fontSize: 13.5, lineHeight: 1.4 }}>{err}</div>}
+          <div style={{ marginTop: 6 }}>
+            <PrimaryButton onClick={handle} loading={busy}>
+              {tab === 'signin' ? 'Sign In' : 'Create Account'}
+            </PrimaryButton>
           </div>
-        ) : (
-          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              onKeyDown={(e) => e.key === 'Enter' && verify()}
-              placeholder="123456"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.4em', fontSize: 22, fontWeight: 600 }}
-            />
-            {err && <div style={{ color: '#C62828', fontSize: 13.5 }}>{err}</div>}
-            {resent && <div style={{ color: C.muted, fontSize: 13 }}>New code sent.</div>}
-            <PrimaryButton onClick={verify} loading={busy}>Verify &amp; continue</PrimaryButton>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-              <button onClick={() => { setStage('email'); setCode(''); setErr(''); }} style={{ color: C.muted, fontSize: 13.5 }}>← Change email</button>
-              <button onClick={() => sendCode(true)} style={{ color: C.orange, fontSize: 13.5, fontWeight: 600 }}>Resend code</button>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

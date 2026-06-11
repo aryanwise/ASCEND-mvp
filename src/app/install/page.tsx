@@ -9,7 +9,6 @@ export default function InstallPage() {
   const [notYet, setNotYet] = useState(false);
 
   useEffect(() => {
-    // Already installed and opened from home screen -> move on.
     if (isStandalone()) { window.location.href = '/auth'; return; }
     setPlatform(detectPlatform());
   }, []);
@@ -18,7 +17,6 @@ export default function InstallPage() {
     if (isStandalone()) {
       window.location.href = '/auth';
     } else {
-      // They tapped continue but are still in the browser. Tell them to open the installed app.
       setNotYet(true);
     }
   }
