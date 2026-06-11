@@ -34,9 +34,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Otherwise read onboarding status, retrying until it reads TRUE (not just
-      // until the row exists). A read replica can briefly return stale `false`
-      // right after the write, so we re-check a few times before giving up.
+      // Otherwise check onboarding status via the server route (service role),
+      // which bypasses RLS — a direct client read of `profiles` can return empty
+      // if the auth token isn't attached yet, wrongly bouncing to /onboard.
       let onboarded = false;
       try {
         const res = await fetch('/api/profile-status', {
@@ -47,6 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         const data = await res.json();
         onboarded = !!data.onboarded;
       } catch {
+        // On a status-check failure, don't punish the user — let them in.
         onboarded = true;
       }
 

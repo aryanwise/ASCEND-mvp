@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { waitForSession } from '@/lib/session';
 import { C, SERIF, area, AREA_LIST } from '@/lib/design';
 import { Spinner, PrimaryButton } from '@/components/ui';
 import type { Goal, Task, QA } from '@/lib/types';
@@ -14,21 +15,27 @@ export default function GoalsPage() {
   const [showNew, setShowNew] = useState(false);
 
   async function load(id: string) {
-    const { data } = await supabase
-      .from('goals')
-      .select('*, tasks(*)')
-      .eq('user_id', id)
-      .order('created_at', { ascending: false });
-    setGoals((data as Goal[]) || []);
+    // Read through the server (service role) to bypass the RLS token race that
+    // would otherwise return an empty list right after navigation.
+    try {
+      const res = await fetch('/api/goals/list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id }),
+      });
+      const data = await res.json();
+      setGoals((data.goals as Goal[]) || []);
+    } catch {
+      setGoals([]);
+    }
     setLoaded(true);
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const id = data.session?.user?.id;
-      if (!id) { window.location.href = '/auth'; return; }
-      setUserId(id);
-      load(id);
+    waitForSession().then((session) => {
+      if (!session) { window.location.href = '/auth'; return; }
+      setUserId(session.user.id);
+      load(session.user.id);
     });
   }, []);
 

@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { waitForSession } from '@/lib/session';
 import { C, SERIF, area } from '@/lib/design';
 import { Spinner } from '@/components/ui';
 import type { Goal } from '@/lib/types';
@@ -16,9 +17,9 @@ export default function InsightsPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      const id = data.session?.user?.id;
-      if (!id) { window.location.href = '/auth'; return; }
+      const session = await waitForSession();
+      if (!session) { window.location.href = '/auth'; return; }
+      const id = session.user.id;
 
       const days: DayStat[] = [];
       for (let i = 6; i >= 0; i--) {
@@ -27,13 +28,21 @@ export default function InsightsPage() {
       }
       const since = days[0].date;
 
-      const [{ data: checkins }, { data: gs }] = await Promise.all([
-        supabase.from('daily_check_ins').select('date, completed').eq('user_id', id).gte('date', since),
-        supabase.from('goals').select('*').eq('user_id', id).eq('status', 'active'),
-      ]);
+      let checkins: { date: string; completed: boolean }[] = [];
+      let gs: Goal[] = [];
+      try {
+        const res = await fetch('/api/insights-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: id, since }),
+        });
+        const data = await res.json();
+        checkins = data.checkins || [];
+        gs = (data.goals as Goal[]) || [];
+      } catch { /* ignore */ }
 
       const byDate: Record<string, { t: number; d: number }> = {};
-      (checkins || []).forEach((c) => {
+      checkins.forEach((c) => {
         byDate[c.date] = byDate[c.date] || { t: 0, d: 0 };
         byDate[c.date].t++;
         if (c.completed) byDate[c.date].d++;
@@ -43,7 +52,7 @@ export default function InsightsPage() {
         day.pct = s && s.t ? Math.round((s.d / s.t) * 100) : 0;
       });
       setWeek(days);
-      setGoals((gs as Goal[]) || []);
+      setGoals(gs);
       setLoaded(true);
 
       fetch('/api/insights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: id }) })

@@ -16,6 +16,10 @@ export default function AuthPage() {
   }
 
   async function routeAfterAuth(userId: string) {
+    // Check onboarded status via a server route (service role) instead of a
+    // direct client read. Right after sign-in the client's auth token may not be
+    // attached yet, so an RLS-protected read of `profiles` returns empty and
+    // wrongly bounces the user to /onboard. The server check has no such race.
     try {
       const res = await fetch('/api/profile-status', {
         method: 'POST',
@@ -25,6 +29,7 @@ export default function AuthPage() {
       const data = await res.json();
       window.location.href = data.onboarded ? '/app?onboarded=1' : '/onboard';
     } catch {
+      // If the status check fails, fall back to /app and let its guard decide.
       window.location.href = '/app?onboarded=1';
     }
   }
@@ -39,10 +44,12 @@ export default function AuthPage() {
       if (tab === 'signup') {
         const { data, error } = await supabase.auth.signUp({ email: e, password });
         if (error) throw error;
+        // With email confirmation OFF, signUp returns a live session immediately.
         if (data.session?.user) {
           await routeAfterAuth(data.session.user.id);
           return;
         }
+        // Fallback: if confirmation is still ON in the project, sign in directly.
         const { data: si, error: siErr } = await supabase.auth.signInWithPassword({ email: e, password });
         if (siErr || !si.session) {
           throw new Error('Account created. Turn OFF "Confirm email" in Supabase to log in instantly.');
@@ -56,6 +63,7 @@ export default function AuthPage() {
       }
     } catch (ex) {
       const msg = (ex as Error).message || 'Something went wrong.';
+      // Friendlier copy for the most common cases.
       if (/already registered|already exists/i.test(msg)) {
         setErr('That email already has an account — switch to Sign In.');
       } else if (/invalid login credentials/i.test(msg)) {

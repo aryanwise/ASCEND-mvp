@@ -4,10 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 export const runtime = 'nodejs';
 export const maxDuration = 10;
 
-// Reads onboarded status with the service role (bypasses RLS). This avoids the
-// race where a freshly-signed-in client hasn't attached its auth token yet, so
-// an RLS-protected read of `profiles` returns empty and wrongly routes the user
-// back to onboarding. The userId comes from the just-returned session.
+// Lists the user's goals (with tasks) using the service role, bypassing RLS.
+// A direct client read can return empty if the auth token isn't attached yet
+// right after navigation/login — same race that affected the auth pages.
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await req.json();
@@ -15,14 +14,13 @@ export async function POST(req: NextRequest) {
 
     const db = supabaseAdmin();
     const { data, error } = await db
-      .from('profiles')
-      .select('onboarded')
-      .eq('id', userId)
-      .maybeSingle();
+      .from('goals')
+      .select('*, tasks(*)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    // exists=false means there's no profile row yet (truly needs onboarding)
-    return NextResponse.json({ exists: !!data, onboarded: !!data?.onboarded });
+    return NextResponse.json({ goals: data || [] });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

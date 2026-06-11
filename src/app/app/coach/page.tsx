@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { waitForSession } from '@/lib/session';
 import { C, SERIF } from '@/lib/design';
 import { Logo } from '@/components/ui';
 import type { ChatMessage } from '@/lib/types';
@@ -33,9 +34,9 @@ export default function CoachPage() {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const id = data.session?.user?.id;
-      if (!id) { window.location.href = '/auth'; return; }
+    waitForSession().then((session) => {
+      if (!session) { window.location.href = '/auth'; return; }
+      const id = session.user.id;
       setUserId(id);
       setSessionId(`s_${Date.now()}`);
       loadSessions(id);
@@ -45,22 +46,27 @@ export default function CoachPage() {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, sending]);
 
   async function loadSessions(id: string) {
-    const { data } = await supabase
-      .from('chat_logs')
-      .select('session_id, session_title, created_at')
-      .eq('user_id', id)
-      .order('created_at', { ascending: false });
-    const seen = new Set<string>();
-    const list: Session[] = [];
-    (data || []).forEach((r) => {
-      if (!seen.has(r.session_id)) { seen.add(r.session_id); list.push({ session_id: r.session_id, session_title: r.session_title }); }
-    });
-    setSessions(list);
+    try {
+      const res = await fetch('/api/coach-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id }),
+      });
+      const data = await res.json();
+      setSessions((data.sessions as Session[]) || []);
+    } catch { /* ignore */ }
   }
 
   async function loadSession(sid: string) {
-    const { data } = await supabase.from('chat_logs').select('role, content').eq('user_id', userId).eq('session_id', sid).order('created_at');
-    setMessages((data || []).map((r) => ({ role: r.role as 'user' | 'assistant', content: r.content })));
+    try {
+      const res = await fetch('/api/coach-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, sessionId: sid }),
+      });
+      const data = await res.json();
+      setMessages((data.messages || []).map((r: { role: string; content: string }) => ({ role: r.role as 'user' | 'assistant', content: r.content })));
+    } catch { /* ignore */ }
     setSessionId(sid);
     setSidebar(false);
   }

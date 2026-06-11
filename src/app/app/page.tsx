@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { waitForSession } from '@/lib/session';
 import { C, SERIF, area, greeting, todayISO, QUOTES } from '@/lib/design';
 import { Logo, Spinner, Card } from '@/components/ui';
 import type { Priority, DayBlock, DeferredItem } from '@/lib/types';
@@ -27,25 +28,29 @@ export default function HomePage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      const id = data.session?.user?.id;
-      if (!id) { window.location.href = '/auth'; return; }
+      const session = await waitForSession();
+      if (!session) { window.location.href = '/auth'; return; }
+      const id = session.user.id;
       setUserId(id);
 
-      const [{ data: profile }, { data: prio }, { data: plan }] = await Promise.all([
-        supabase.from('profiles').select('first_name').eq('id', id).maybeSingle(),
-        supabase.from('priorities').select('*').eq('user_id', id).eq('date', date).order('id'),
-        supabase.from('day_plans').select('*').eq('user_id', id).eq('date', date).maybeSingle(),
-      ]);
-      setFirstName(profile?.first_name || '');
-      setPriorities(prio || []);
-      if (plan) {
-        setBlocks((plan.blocks as DayBlock[]) || []);
-        setDeferred((plan.deferred as DeferredItem[]) || []);
-        setAdvice(plan.advice || '');
-        setEnergy(plan.energy || 'Medium');
-        if (plan.hours_available) setHours(String(plan.hours_available));
-      }
+      try {
+        const res = await fetch('/api/home-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: id, date }),
+        });
+        const data = await res.json();
+        setFirstName(data.firstName || '');
+        setPriorities(data.priorities || []);
+        const plan = data.dayPlan;
+        if (plan) {
+          setBlocks((plan.blocks as DayBlock[]) || []);
+          setDeferred((plan.deferred as DeferredItem[]) || []);
+          setAdvice(plan.advice || '');
+          setEnergy(plan.energy || 'Medium');
+          if (plan.hours_available) setHours(String(plan.hours_available));
+        }
+      } catch { /* ignore */ }
       setLoaded(true);
     })();
   }, [date]);
