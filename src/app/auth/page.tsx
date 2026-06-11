@@ -1,118 +1,84 @@
 'use client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2, ArrowRight, ChevronLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, Loader2, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-type Step = 'email' | 'otp';
-
 export default function AuthPage() {
-  const router = useRouter();
-  const [step, setStep]         = useState<Step>('email');
-  const [email, setEmail]       = useState('');
-  const [otp, setOtp]           = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
+  const [email, setEmail]     = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent]       = useState(false);
+  const [error, setError]     = useState('');
 
-  const sendOTP = async () => {
+  const send = async () => {
     if (!email.trim()) return;
     setLoading(true); setError('');
     const { error: e } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: undefined,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     setLoading(false);
     if (e) { setError(e.message); return; }
-    setStep('otp');
-  };
-
-  const verifyOTP = async () => {
-    if (otp.length < 6) return;
-    setLoading(true); setError('');
-    const { data, error: e } = await supabase.auth.verifyOtp({
-      email: email.trim().toLowerCase(),
-      token: otp.trim(),
-      type: 'email',
-    });
-    if (e) { setError(e.message); setLoading(false); return; }
-    if (!data.user) { setError('Verification failed. Try again.'); setLoading(false); return; }
-
-    // Check onboarded
-    const { data: profile } = await supabase
-      .from('profiles').select('onboarded').eq('id', data.user.id).single();
-    window.location.href = profile?.onboarded ? '/app' : '/onboard';
+    setSent(true);
   };
 
   return (
     <div className="shell" style={{ alignItems:'center', justifyContent:'center', padding:'0 24px' }}>
       <div className="fade-up" style={{ width:'100%' }}>
 
-        {/* Logo */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:40 }}>
-          <div style={{ width:60, height:60, borderRadius:16, background:'#D9531E', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
-            <svg width="34" height="34" viewBox="0 0 38 38" fill="none">
+          <div style={{ width:64, height:64, borderRadius:18, background:'#D9531E', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16 }}>
+            <svg width="36" height="36" viewBox="0 0 38 38" fill="none">
               <path d="M10 28L19 10L28 28" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
               <path d="M14.5 22H23.5" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round"/>
             </svg>
           </div>
-          <div style={{ fontFamily:'Georgia,serif', fontSize:28, fontWeight:700, color:'#1A1815', letterSpacing:'-0.5px' }}>ASCEND</div>
-          <div style={{ fontSize:13, color:'#6B6359', marginTop:6, textAlign:'center' }}>Your cognitive partner</div>
+          <div style={{ fontFamily:'Georgia,serif', fontSize:30, fontWeight:700, color:'#1A1815' }}>ASCEND</div>
+          <div style={{ fontSize:14, color:'#6B6359', marginTop:6 }}>Your cognitive partner</div>
         </div>
 
-        {step === 'email' && (
+        {!sent ? (
           <>
-            <div style={{ fontSize:18, fontWeight:700, color:'#1A1815', marginBottom:6, fontFamily:'Georgia,serif' }}>
-              Sign in or create account
+            <div style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:'#1A1815', marginBottom:8 }}>
+              Get started
             </div>
-            <div style={{ fontSize:13, color:'#6B6359', marginBottom:20, lineHeight:1.5 }}>
-              We'll send a 6-digit code to your email. No password needed.
+            <div style={{ fontSize:14, color:'#6B6359', marginBottom:24, lineHeight:1.6 }}>
+              Enter your email — we'll send you a secure sign-in link. No password needed.
             </div>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendOTP()}
+              onKeyDown={e => e.key === 'Enter' && send()}
               placeholder="your@email.com"
               style={{ width:'100%', padding:'14px 16px', borderRadius:14, border:'1px solid rgba(26,24,21,0.12)', background:'#fff', fontSize:16, color:'#1A1815', outline:'none', marginBottom:12 }}
             />
             {error && <div style={{ fontSize:12, color:'#D9531E', marginBottom:10 }}>{error}</div>}
-            <button onClick={sendOTP} disabled={!email.trim() || loading} className="btn-primary">
-              {loading ? <Loader2 size={16} style={{ animation:'spin 1s linear infinite' }} /> : <><span>Send code</span><ArrowRight size={16} /></>}
+            <button onClick={send} disabled={!email.trim() || loading} className="btn-primary">
+              {loading
+                ? <Loader2 size={16} style={{ animation:'spin 1s linear infinite' }} />
+                : <><span>Send sign-in link</span><ArrowRight size={16} /></>
+              }
             </button>
           </>
-        )}
-
-        {step === 'otp' && (
-          <>
-            <button onClick={() => setStep('email')} style={{ display:'flex', alignItems:'center', gap:4, background:'none', border:'none', cursor:'pointer', color:'#6B6359', fontSize:13, marginBottom:20, padding:0 }}>
-              <ChevronLeft size={16} /> Back
-            </button>
-            <div style={{ fontSize:18, fontWeight:700, color:'#1A1815', marginBottom:6, fontFamily:'Georgia,serif' }}>
+        ) : (
+          <div className="fade-up" style={{ textAlign:'center' }}>
+            <div style={{ width:64, height:64, borderRadius:'50%', background:'#FFE9DD', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+              <Mail size={28} color="#D9531E" />
+            </div>
+            <div style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:'#1A1815', marginBottom:12 }}>
               Check your email
             </div>
-            <div style={{ fontSize:13, color:'#6B6359', marginBottom:20, lineHeight:1.5 }}>
-              We sent a sign-in code to <strong>{email}</strong>
+            <div style={{ fontSize:14, color:'#6B6359', lineHeight:1.7, marginBottom:24 }}>
+              We sent a sign-in link to<br /><strong style={{ color:'#1A1815' }}>{email}</strong><br /><br />
+              Click the link in the email to continue. You can close this tab.
             </div>
-            <input
-              type="number"
-              inputMode="numeric"
-              value={otp}
-              onChange={e => setOtp(e.target.value.slice(0, 10))}
-              onKeyDown={e => e.key === 'Enter' && verifyOTP()}
-              placeholder="Enter your code"
-              style={{ width:'100%', padding:'16px', borderRadius:14, border:'1px solid rgba(26,24,21,0.12)', background:'#fff', fontSize:24, fontWeight:700, color:'#1A1815', outline:'none', textAlign:'center', marginBottom:12 }}
-            />
-            {error && <div style={{ fontSize:12, color:'#D9531E', marginBottom:10 }}>{error}</div>}
-            <button onClick={verifyOTP} disabled={otp.length < 4 || loading} className="btn-primary">
-              {loading ? <Loader2 size={16} style={{ animation:'spin 1s linear infinite' }} /> : <><span>Verify</span><ArrowRight size={16} /></>}
+            <button onClick={() => setSent(false)} style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'#A8A095' }}>
+              Wrong email? Go back
             </button>
-            <button onClick={sendOTP} style={{ marginTop:14, background:'none', border:'none', cursor:'pointer', fontSize:13, color:'#A8A095', width:'100%', textAlign:'center' }}>
-              Didn't receive it? Resend code
-            </button>
-          </>
+          </div>
         )}
       </div>
     </div>
