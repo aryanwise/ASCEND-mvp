@@ -1,14 +1,12 @@
 {
   "name": "Ascend — Cognitive Partner",
   "short_name": "Ascend",
-  "description": "An AI that learns why you slip and re-engineers your plan around your real life.",
   "start_url": "/app",
   "display": "standalone",
   "background_color": "#F8F5EF",
   "theme_color": "#D9531E",
-  "orientation": "portrait-primary",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

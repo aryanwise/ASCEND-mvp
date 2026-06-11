@@ -1,127 +1,132 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { Sparkles, Loader2, TrendingUp } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/context/AuthContext';
-import { area } from '@/lib/areas';
-import type { Goal } from '@/types';
+import { C, SERIF, area } from '@/lib/design';
+import { Spinner } from '@/components/ui';
+import type { Goal } from '@/lib/types';
 
-const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+interface DayStat { label: string; date: string; pct: number; }
 
-export default function Insights() {
-  const { user } = useAuth();
-  const [goals, setGoals]     = useState<Goal[]>([]);
-  const [week, setWeek]       = useState<number[]>([0,0,0,0,0,0,0]);
-  const [insight, setInsight] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [iLoad, setILoad]     = useState(false);
-  const [bars, setBars]       = useState(false);
+export default function InsightsPage() {
+  const [loaded, setLoaded] = useState(false);
+  const [observation, setObservation] = useState('');
+  const [obsLoading, setObsLoading] = useState(true);
+  const [week, setWeek] = useState<DayStat[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const dates: string[] = [];
-    for (let i=6;i>=0;i--) { const d=new Date(); d.setDate(d.getDate()-i); dates.push(d.toISOString().split('T')[0]); }
-    const [g, c] = await Promise.all([
-      supabase.from('goals').select('*').eq('user_id',user.id).eq('status','active'),
-      supabase.from('daily_check_ins').select('*').eq('user_id',user.id).gte('date',dates[0]).lte('date',dates[6]),
-    ]);
-    if (g.data) setGoals(g.data);
-    if (c.data) {
-      setWeek(dates.map(date => {
-        const day = (c.data as {date:string;completed:boolean}[]).filter(x=>x.date===date);
-        if (!day.length) return 0;
-        return Math.round(day.filter(x=>x.completed).length/day.length*100);
-      }));
-    }
-    setLoading(false);
-    setTimeout(()=>setBars(true),100);
-    if (g.data?.length) {
-      setILoad(true);
-      const names = (g.data as Goal[]).map(x=>`${x.title} (${x.area})`).join(', ');
-      fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        system:`One sharp insight about the user's goals: ${names}. 1 sentence. No encouragement. State the pattern honestly. Reference goal names.`,
-        messages:[{role:'user',content:'What pattern do you see?'}]
-      })}).then(r=>r.json()).then(d=>{ setInsight(d.content?.replace(/^["'""]|["'""]$/g,'')||''); setILoad(false); });
-    }
-  }, [user]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const id = data.session?.user?.id;
+      if (!id) { window.location.href = '/auth'; return; }
 
-  useEffect(()=>{ load(); },[load]);
+      const days: DayStat[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 86400000);
+        days.push({ label: d.toLocaleDateString('en', { weekday: 'short' }), date: d.toISOString().slice(0, 10), pct: 0 });
+      }
+      const since = days[0].date;
 
-  const avg  = Math.round(week.reduce((a,b)=>a+b,0)/7);
-  const best = week.indexOf(Math.max(...week));
+      const [{ data: checkins }, { data: gs }] = await Promise.all([
+        supabase.from('daily_check_ins').select('date, completed').eq('user_id', id).gte('date', since),
+        supabase.from('goals').select('*').eq('user_id', id).eq('status', 'active'),
+      ]);
 
-  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60dvh'}}><Loader2 size={24} color="#D9531E" style={{animation:'spin 1s linear infinite'}} /></div>;
+      const byDate: Record<string, { t: number; d: number }> = {};
+      (checkins || []).forEach((c) => {
+        byDate[c.date] = byDate[c.date] || { t: 0, d: 0 };
+        byDate[c.date].t++;
+        if (c.completed) byDate[c.date].d++;
+      });
+      days.forEach((day) => {
+        const s = byDate[day.date];
+        day.pct = s && s.t ? Math.round((s.d / s.t) * 100) : 0;
+      });
+      setWeek(days);
+      setGoals((gs as Goal[]) || []);
+      setLoaded(true);
+
+      fetch('/api/insights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: id }) })
+        .then((r) => r.json()).then((d) => setObservation(d.observation || '')).catch(() => {}).finally(() => setObsLoading(false));
+    })();
+  }, []);
+
+  if (!loaded) return <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spinner /></div>;
+
+  const withData = week.filter((d) => d.pct > 0);
+  const avg = withData.length ? Math.round(withData.reduce((s, d) => s + d.pct, 0) / withData.length) : 0;
+  const best = week.reduce((b, d) => (d.pct > b.pct ? d : b), week[0]);
+  const maxPct = Math.max(100, ...week.map((d) => d.pct));
+
+  function health(pct: number): { label: string; color: string } {
+    if (pct >= 60) return { label: 'On track', color: '#1B7A5C' };
+    if (pct >= 30) return { label: 'Slipping', color: '#B8721C' };
+    return { label: 'At risk', color: '#C62828' };
+  }
 
   return (
-    <div style={{padding:'0 16px',paddingTop:8}}>
-      <h1 style={{fontFamily:'Georgia,serif',fontSize:24,fontWeight:700,color:'#1A1815',marginBottom:4,marginTop:8}}>Insights</h1>
-      <div style={{fontSize:13,color:'#6B6359',marginBottom:20}}>What the data is telling you.</div>
+    <div style={{ padding: 'max(20px, env(safe-area-inset-top)) 20px 20px' }}>
+      <h1 className="serif" style={{ fontSize: 28, fontWeight: 600, margin: '0 0 18px' }}>Insights</h1>
 
-      <div style={{background:'#1A1815',borderRadius:16,padding:'16px',marginBottom:16}}>
-        <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
-          <Sparkles size={13} color="#D9531E" />
-          <span style={{fontSize:10,fontWeight:700,color:'#D9531E',letterSpacing:'1.5px',textTransform:'uppercase'}}>AI Observation</span>
-        </div>
-        {iLoad
-          ? <div style={{display:'flex',alignItems:'center',gap:8}}><Loader2 size={13} color="#6B6359" style={{animation:'spin 1s linear infinite'}} /><span style={{fontSize:13,color:'#6B6359'}}>Analysing patterns...</span></div>
-          : <p style={{fontSize:14,color:'rgba(255,255,255,0.88)',lineHeight:1.65,margin:0,fontStyle:'italic',fontFamily:'Georgia,serif'}}>"{insight||'Keep checking in — insights improve with more data.'}"</p>
-        }
+      <div style={{ background: C.orangeSoft, borderRadius: 16, padding: '16px 18px', marginBottom: 22 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.orange, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Observation</div>
+        {obsLoading ? <Spinner size={18} /> : <div style={{ fontSize: 15.5, color: C.dark, lineHeight: 1.45, fontFamily: SERIF }}>{observation}</div>}
       </div>
 
-      <div className="slabel">This week</div>
-      <div className="card" style={{marginBottom:16}}>
-        <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
-          <div><div style={{fontFamily:'Georgia,serif',fontSize:32,fontWeight:700,color:'#1A1815',lineHeight:1}}>{avg}%</div><div style={{fontSize:11,color:'#A8A095',marginTop:4}}>avg completion</div></div>
-          <div style={{textAlign:'right'}}><div style={{fontSize:14,fontWeight:700,color:'#1B7A5C'}}>{DAYS[best]}</div><div style={{fontSize:11,color:'#A8A095',marginTop:4}}>best day</div></div>
-        </div>
-        <div style={{display:'flex',gap:6,alignItems:'flex-end',height:64}}>
-          {week.map((pct,i)=>(
-            <div key={DAYS[i]} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:5}}>
-              <div style={{width:'100%',height:52,display:'flex',alignItems:'flex-end'}}>
-                <div style={{width:'100%',height:bars?`${Math.max(pct/100*52,pct>0?4:0)}px`:'0px',borderRadius:'4px 4px 0 0',background:i===6?'#D9531E':pct>=80?'#1B7A5C':pct>=50?'#B8721C':'#EBE5D6',transition:`height 0.5s ease ${i*0.06}s`}} />
-              </div>
-              <span style={{fontSize:10,color:i===6?'#D9531E':'#A8A095',fontWeight:i===6?700:500}}>{DAYS[i].slice(0,1)}</span>
+      <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, marginBottom: 12 }}>Last 7 days</div>
+      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 6, height: 120 }}>
+          {week.map((d) => (
+            <div key={d.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
+              <div style={{ fontSize: 10.5, color: C.muted, fontWeight: 600 }}>{d.pct}%</div>
+              <div style={{ width: '70%', height: `${(d.pct / maxPct) * 90}%`, minHeight: d.pct > 0 ? 4 : 2, background: d.pct > 0 ? C.orange : C.sand, borderRadius: 5, transition: 'height 0.4s' }} />
+              <div style={{ fontSize: 11, color: C.muted }}>{d.label}</div>
             </div>
           ))}
         </div>
+        <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+          <Stat label="Average" value={`${avg}%`} />
+          <Stat label="Best day" value={best.pct > 0 ? best.label : '—'} />
+        </div>
       </div>
 
-      <div className="slabel">Goal health</div>
-      <div className="card" style={{marginBottom:16}}>
-        {goals.length===0
-          ? <div style={{fontSize:13,color:'#A8A095',textAlign:'center',padding:'8px 0'}}>No active goals yet.</div>
-          : goals.map((g,i)=>{
-              const a=area(g.area); const pct=g.completion_pct;
-              const status=pct>=70?'On track':pct>=40?'Slipping':'At risk';
-              const color=pct>=70?'#1B7A5C':pct>=40?'#B8721C':'#D9531E';
+      {goals.length > 0 && (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, margin: '24px 0 12px' }}>Goal health</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {goals.map((g) => {
+              const a = area(g.area);
+              const h = health(g.completion_pct);
               return (
-                <div key={g.id} style={{paddingTop:i>0?14:0,borderTop:i>0?'1px solid rgba(26,24,21,0.06)':'none',marginTop:i>0?14:0}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0,flex:1}}>
-                      <span style={{fontSize:16,flexShrink:0}}>{a.emoji}</span>
-                      <span style={{fontSize:13,fontWeight:600,color:'#1A1815',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.title}</span>
-                    </div>
-                    <div style={{display:'flex',gap:8,alignItems:'center',flexShrink:0,marginLeft:8}}>
-                      <span style={{fontSize:11,fontWeight:700,color}}>{status}</span>
-                      <span style={{fontSize:13,fontWeight:700,color}}>{pct}%</span>
-                    </div>
+                <div key={g.id} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
+                    <span style={{ fontSize: 14.5, fontWeight: 600 }}>{a.emoji} {g.title}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: h.color }}>{h.label}</span>
                   </div>
-                  <div style={{height:5,background:'#EBE5D6',borderRadius:3,overflow:'hidden'}}>
-                    <div style={{height:'100%',width:bars?`${pct}%`:'0%',background:color,borderRadius:3,transition:`width 0.7s ease ${i*0.15}s`}} />
+                  <div style={{ height: 7, background: C.sand, borderRadius: 5, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${g.completion_pct}%`, background: h.color, borderRadius: 5 }} />
                   </div>
                 </div>
               );
-            })
-        }
-      </div>
+            })}
+          </div>
+        </>
+      )}
 
-      {avg>0 && (
-        <div style={{background:'#FFE9DD',borderRadius:12,padding:'12px 14px',marginBottom:24,display:'flex',gap:8}}>
-          <TrendingUp size={14} color="#D9531E" style={{marginTop:1,flexShrink:0}} />
-          <span style={{fontSize:12,color:'#B33E0E',lineHeight:1.5}}>Schedule your hardest tasks on {DAYS[best]} — that's when you actually show up.</span>
+      {best.pct > 0 && (
+        <div style={{ marginTop: 22, padding: '14px 16px', background: C.sand, borderRadius: 14, fontSize: 14, color: C.dark }}>
+          💡 Schedule your hardest tasks on <b>{best.label}</b> — that&apos;s when you show up most.
         </div>
       )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div className="serif" style={{ fontSize: 22, fontWeight: 600, color: C.orange }}>{value}</div>
+      <div style={{ fontSize: 12, color: C.muted }}>{label}</div>
     </div>
   );
 }

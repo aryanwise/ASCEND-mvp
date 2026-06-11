@@ -1,159 +1,122 @@
 'use client';
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-
-type Mode = 'signup' | 'login' | 'forgot';
+import { C } from '@/lib/design';
+import { Logo, PrimaryButton } from '@/components/ui';
 
 export default function AuthPage() {
-  const router = useRouter();
-  const [mode, setMode]         = useState<Mode>('signup');
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState('');
-  const [sent, setSent]         = useState(false);
+  const [stage, setStage] = useState<'email' | 'code'>('email');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [resent, setResent] = useState(false);
 
-  const handleSignup = async () => {
-  if (!email.trim() || !password.trim()) return;
-  if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
-  setLoading(true); setError('');
-  const { error: e } = await supabase.auth.signUp({ 
-    email: email.trim().toLowerCase(), 
-    password 
-  });
-  setLoading(false);
-  if (e) { setError(e.message); return; }
-  // If already in standalone (installed), skip install page
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  window.location.href = isStandalone ? '/onboard' : '/install';
-};
+  function validEmail(e: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  }
 
-  const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) return;
-    setLoading(true); setError('');
-    const { error: e } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-    setLoading(false);
-    if (e) { setError(e.message); return; }
-    const { data } = await supabase.from('profiles').select('onboarded').eq('id', (await supabase.auth.getUser()).data.user!.id).single();
-    window.location.href = data?.onboarded ? '/app' : '/onboard';
-  };
-
-  const handleForgot = async () => {
-    if (!email.trim()) { setError('Enter your email first'); return; }
-    setLoading(true); setError('');
-    const { error: e } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: `${window.location.origin}/auth/reset`,
+  async function sendCode(isResend = false) {
+    setErr('');
+    const e = email.trim().toLowerCase();
+    if (!validEmail(e)) { setErr('Enter a valid email address.'); return; }
+    setBusy(true);
+    // shouldCreateUser:true => same call signs up new users AND logs in existing ones.
+    const { error } = await supabase.auth.signInWithOtp({
+      email: e,
+      options: { shouldCreateUser: true },
     });
-    setLoading(false);
-    if (e) { setError(e.message); return; }
-    setSent(true);
-  };
+    setBusy(false);
+    if (error) { setErr(error.message); return; }
+    setEmail(e);
+    setStage('code');
+    if (isResend) { setResent(true); setTimeout(() => setResent(false), 3000); }
+  }
+
+  async function verify() {
+    setErr('');
+    const token = code.trim();
+    if (token.length < 6) { setErr('Enter the 6-digit code from your email.'); return; }
+    setBusy(true);
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email.trim().toLowerCase(),
+      token,
+      type: 'email',
+    });
+    if (error || !data.session) {
+      setBusy(false);
+      setErr(error?.message || 'That code didn\'t work. Try again.');
+      return;
+    }
+    // Session is now set inside the app. Route based on onboarding status.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('onboarded')
+      .eq('id', data.session.user.id)
+      .maybeSingle();
+    window.location.href = profile?.onboarded ? '/app' : '/onboard';
+  }
 
   return (
-    <div className="shell" style={{ alignItems:'center', justifyContent:'center', padding:'0 24px' }}>
-      <div className="fade-up" style={{ width:'100%' }}>
-
-        {/* Logo */}
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:36 }}>
-          <div style={{ width:64, height:64, borderRadius:18, background:'#D9531E', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
-            <svg width="36" height="36" viewBox="0 0 38 38" fill="none">
-              <path d="M10 28L19 10L28 28" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M14.5 22H23.5" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
+    <div className="shell">
+      <div className="scrollarea" style={{ padding: '0 24px' }}>
+        <div style={{ paddingTop: 'max(72px, env(safe-area-inset-top))', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+          <Logo size={56} />
+          <div className="serif" style={{ fontSize: 34, fontWeight: 600, letterSpacing: '0.03em' }}>Ascend</div>
+          <div style={{ color: C.muted, fontSize: 15, textAlign: 'center', maxWidth: 290, lineHeight: 1.5 }}>
+            {stage === 'email'
+              ? 'Sign in with your email. We\'ll send you a code — no password needed.'
+              : `Enter the 6-digit code we sent to ${email}.`}
           </div>
-          <div style={{ fontFamily:'Georgia,serif', fontSize:28, fontWeight:700, color:'#1A1815' }}>ASCEND</div>
-          <div style={{ fontSize:13, color:'#6B6359', marginTop:5 }}>Your cognitive partner</div>
         </div>
 
-        {/* Tab toggle */}
-        {mode !== 'forgot' && (
-          <div style={{ display:'flex', background:'#EBE5D6', borderRadius:12, padding:4, marginBottom:24 }}>
-            {(['signup','login'] as Mode[]).map(m => (
-              <button key={m} onClick={() => { setMode(m); setError(''); }} style={{ flex:1, padding:'10px', borderRadius:9, background:mode===m?'#fff':'transparent', border:'none', cursor:'pointer', fontSize:14, fontWeight:mode===m?700:500, color:mode===m?'#1A1815':'#6B6359', transition:'all 0.2s' }}>
-                {m === 'signup' ? 'Create account' : 'Sign in'}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Forgot password sent */}
-        {mode === 'forgot' && sent ? (
-          <div className="fade-up" style={{ textAlign:'center' }}>
-            <div style={{ fontSize:40, marginBottom:16 }}>📬</div>
-            <div style={{ fontFamily:'Georgia,serif', fontSize:20, fontWeight:700, color:'#1A1815', marginBottom:8 }}>Check your email</div>
-            <div style={{ fontSize:14, color:'#6B6359', lineHeight:1.6, marginBottom:24 }}>We sent a password reset link to <strong>{email}</strong></div>
-            <button onClick={() => { setMode('login'); setSent(false); }} style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, color:'#D9531E', fontWeight:600 }}>
-              Back to sign in
-            </button>
+        {stage === 'email' ? (
+          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && sendCode()}
+              placeholder="you@email.com"
+              type="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoComplete="email"
+              style={inputStyle}
+            />
+            {err && <div style={{ color: '#C62828', fontSize: 13.5 }}>{err}</div>}
+            <PrimaryButton onClick={() => sendCode()} loading={busy}>Send me a code</PrimaryButton>
           </div>
         ) : (
-          <>
-            {mode === 'forgot' && (
-              <>
-                <div style={{ fontFamily:'Georgia,serif', fontSize:20, fontWeight:700, color:'#1A1815', marginBottom:6 }}>Reset password</div>
-                <div style={{ fontSize:14, color:'#6B6359', marginBottom:20 }}>We'll email you a link to reset it.</div>
-              </>
-            )}
-
-            {/* Email */}
-            <div style={{ fontSize:12, fontWeight:600, color:'#6B6359', marginBottom:6 }}>Email</div>
+          <div style={{ marginTop: 36, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (mode==='signup'?handleSignup():mode==='login'?handleLogin():handleForgot())}
-              placeholder="your@email.com"
-              style={{ width:'100%', padding:'14px 16px', borderRadius:12, border:'1px solid rgba(26,24,21,0.12)', background:'#fff', fontSize:16, color:'#1A1815', outline:'none', marginBottom:12 }}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onKeyDown={(e) => e.key === 'Enter' && verify()}
+              placeholder="123456"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              style={{ ...inputStyle, textAlign: 'center', letterSpacing: '0.4em', fontSize: 22, fontWeight: 600 }}
             />
-
-            {/* Password */}
-            {mode !== 'forgot' && (
-              <>
-                <div style={{ fontSize:12, fontWeight:600, color:'#6B6359', marginBottom:6 }}>Password</div>
-                <div style={{ position:'relative', marginBottom:16 }}>
-                  <input
-                    type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (mode==='signup'?handleSignup():handleLogin())}
-                    placeholder={mode==='signup' ? 'Min 6 characters' : 'Your password'}
-                    style={{ width:'100%', padding:'14px 48px 14px 16px', borderRadius:12, border:'1px solid rgba(26,24,21,0.12)', background:'#fff', fontSize:16, color:'#1A1815', outline:'none' }}
-                  />
-                  <button onClick={() => setShowPass(s=>!s)} style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                    {showPass ? <EyeOff size={18} color="#A8A095" /> : <Eye size={18} color="#A8A095" />}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {error && <div style={{ fontSize:12, color:'#D9531E', marginBottom:12 }}>{error}</div>}
-
-            {/* CTA */}
-            <button
-              onClick={mode==='signup'?handleSignup:mode==='login'?handleLogin:handleForgot}
-              disabled={!email.trim()||(mode!=='forgot'&&!password.trim())||loading}
-              className="btn-primary"
-            >
-              {loading
-                ? <Loader2 size={16} style={{ animation:'spin 1s linear infinite' }} />
-                : <>{mode==='signup'?'Create account':mode==='login'?'Sign in':'Send reset link'} <ArrowRight size={16} /></>
-              }
-            </button>
-
-            {/* Forgot password link */}
-            {mode === 'login' && (
-              <button onClick={() => { setMode('forgot'); setError(''); }} style={{ marginTop:16, background:'none', border:'none', cursor:'pointer', fontSize:13, color:'#A8A095', width:'100%', textAlign:'center' }}>
-                Forgot password?
-              </button>
-            )}
-
-            {mode === 'forgot' && (
-              <button onClick={() => { setMode('login'); setError(''); }} style={{ marginTop:16, background:'none', border:'none', cursor:'pointer', fontSize:13, color:'#A8A095', width:'100%', textAlign:'center' }}>
-                Back to sign in
-              </button>
-            )}
-          </>
+            {err && <div style={{ color: '#C62828', fontSize: 13.5 }}>{err}</div>}
+            {resent && <div style={{ color: C.muted, fontSize: 13 }}>New code sent.</div>}
+            <PrimaryButton onClick={verify} loading={busy}>Verify &amp; continue</PrimaryButton>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+              <button onClick={() => { setStage('email'); setCode(''); setErr(''); }} style={{ color: C.muted, fontSize: 13.5 }}>← Change email</button>
+              <button onClick={() => sendCode(true)} style={{ color: C.orange, fontSize: 13.5, fontWeight: 600 }}>Resend code</button>
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
 }
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '15px 16px',
+  borderRadius: 13,
+  border: `1px solid ${C.border}`,
+  background: '#fff',
+  fontSize: 16,
+  outline: 'none',
+};

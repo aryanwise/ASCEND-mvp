@@ -1,269 +1,242 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, X, CheckCircle2, Circle, Sparkles, Loader2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/context/AuthContext';
-import { area } from '@/lib/areas';
-import { getQuote } from '@/lib/utils';
-import type { Goal, Task, Priority, DayPlan, DayBlock } from '@/types';
+import { C, SERIF, area, greeting, todayISO, QUOTES } from '@/lib/design';
+import { Logo, Spinner, Card } from '@/components/ui';
+import type { Priority, DayBlock, DeferredItem } from '@/lib/types';
 
-const ENERGY = [
-  { id:'low',    label:'🪫 Low',    ctx:'low energy, tired'         },
-  { id:'medium', label:'🔋 Medium', ctx:'medium energy'             },
-  { id:'high',   label:'⚡ High',   ctx:'high energy, fully focused' },
-];
-const HOURS = [{ id:'3',label:'< 4h' },{ id:'5',label:'4–6h' },{ id:'7',label:'6–8h' },{ id:'10',label:'Full day' }];
-const MOOD  = [
-  { id:'easy',   label:'😴 Easy wins',  ctx:'need easy wins, tired'   },
-  { id:'focus',  label:'🎯 Deep focus', ctx:'want deep focus blocks'  },
-  { id:'rushed', label:'⚡ Rushed',     ctx:'short on time'           },
-  { id:'light',  label:'🌿 Light day',  ctx:'light tasks only'        },
-];
+export default function HomePage() {
+  const [userId, setUserId] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [quoteIdx, setQuoteIdx] = useState(0);
+  const [showQuote, setShowQuote] = useState(false);
 
-export default function Home() {
-  const { user } = useAuth();
-  const [profile, setProfile]       = useState<{ first_name: string }|null>(null);
-  const [goals, setGoals]           = useState<(Goal & { tasks: Task[] })[]>([]);
   const [priorities, setPriorities] = useState<Priority[]>([]);
-  const [dayPlan, setDayPlan]       = useState<DayPlan|null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [formOpen, setFormOpen]     = useState(false);
-  const [newPri, setNewPri]         = useState('');
-  const [quoteIdx, setQuoteIdx]     = useState(0);
-  const [selE, setSelE]             = useState<string|null>(null);
-  const [selH, setSelH]             = useState<string|null>(null);
-  const [selM, setSelM]             = useState<string|null>(null);
-  const today = new Date().toISOString().split('T')[0];
-  const hour  = new Date().getHours();
-  const greet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const [newPrio, setNewPrio] = useState('');
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const [p, g, pr, dp] = await Promise.all([
-      supabase.from('profiles').select('first_name').eq('id', user.id).single(),
-      supabase.from('goals').select('*, tasks(*)').eq('user_id', user.id).eq('status', 'active'),
-      supabase.from('priorities').select('*').eq('user_id', user.id).eq('date', today),
-      supabase.from('day_plans').select('*').eq('user_id', user.id).eq('date', today).single(),
-    ]);
-    if (p.data) setProfile(p.data);
-    if (g.data) setGoals(g.data as (Goal & { tasks: Task[] })[]);
-    if (pr.data) setPriorities(pr.data);
-    if (dp.data) setDayPlan({ advice: dp.data.advice, blocks: dp.data.blocks ?? [], deferred: dp.data.deferred ?? [] });
-    setLoading(false);
-  }, [user, today]);
+  const [energy, setEnergy] = useState('Medium');
+  const [hours, setHours] = useState('');
+  const [mood, setMood] = useState<string[]>([]);
+  const [blocks, setBlocks] = useState<(DayBlock & { done?: boolean })[]>([]);
+  const [deferred, setDeferred] = useState<DeferredItem[]>([]);
+  const [advice, setAdvice] = useState('');
+  const [planLoading, setPlanLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => { load(); }, [load]);
+  const date = todayISO();
 
-  const addPri = async () => {
-    if (!newPri.trim() || !user) return;
-    const { data } = await supabase.from('priorities').insert({ user_id: user.id, date: today, text: newPri.trim(), done: false }).select().single();
-    if (data) setPriorities(p => [...p, data]);
-    setNewPri('');
-  };
-  const togglePri = async (id: string, done: boolean) => {
-    await supabase.from('priorities').update({ done: !done }).eq('id', id);
-    setPriorities(p => p.map(x => x.id===id ? { ...x, done:!done } : x));
-  };
-  const delPri = async (id: string) => {
-    await supabase.from('priorities').delete().eq('id', id);
-    setPriorities(p => p.filter(x => x.id !== id));
-  };
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const id = data.session?.user?.id;
+      if (!id) { window.location.href = '/auth'; return; }
+      setUserId(id);
 
-  const generate = async () => {
-    if (!user) return;
-    setGenerating(true); setFormOpen(false);
-    const ctx = [
-      ENERGY.find(e => e.id===selE)?.ctx ?? 'medium energy',
-      MOOD.find(m => m.id===selM)?.ctx ?? '',
-    ].filter(Boolean).join(', ');
-    const res = await fetch('/api/day-plan', {
-      method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ userId: user.id, goals: goals.map(g => ({ title:g.title, area:g.area, tasks:g.tasks.map(t=>t.name) })), context:ctx, hours:parseInt(selH??'8') }),
-    });
-    const plan = await res.json();
-    setDayPlan(plan);
-    setGenerating(false);
-  };
+      const [{ data: profile }, { data: prio }, { data: plan }] = await Promise.all([
+        supabase.from('profiles').select('first_name').eq('id', id).maybeSingle(),
+        supabase.from('priorities').select('*').eq('user_id', id).eq('date', date).order('id'),
+        supabase.from('day_plans').select('*').eq('user_id', id).eq('date', date).maybeSingle(),
+      ]);
+      setFirstName(profile?.first_name || '');
+      setPriorities(prio || []);
+      if (plan) {
+        setBlocks((plan.blocks as DayBlock[]) || []);
+        setDeferred((plan.deferred as DeferredItem[]) || []);
+        setAdvice(plan.advice || '');
+        setEnergy(plan.energy || 'Medium');
+        if (plan.hours_available) setHours(String(plan.hours_available));
+      }
+      setLoaded(true);
+    })();
+  }, [date]);
 
-  const toggleBlock = async (idx: number) => {
-    if (!dayPlan || !user) return;
-    const updated = dayPlan.blocks.map((b,i) => i===idx ? { ...b, done:!b.done } : b);
-    setDayPlan({ ...dayPlan, blocks: updated });
-    await supabase.from('day_plans').update({ blocks: updated }).eq('user_id', user.id).eq('date', today);
-  };
+  function cycleQuote() {
+    setShowQuote(true);
+    setQuoteIdx((i) => (i + 1) % QUOTES.length);
+  }
 
-  if (loading) return <Spinner />;
+  async function addPriority() {
+    const text = newPrio.trim();
+    if (!text || !userId) return;
+    setNewPrio('');
+    const { data } = await supabase.from('priorities').insert({ user_id: userId, date, text, done: false }).select().single();
+    if (data) setPriorities((p) => [...p, data]);
+  }
 
-  const done = dayPlan?.blocks.filter(b=>b.done).length ?? 0;
-  const total = dayPlan?.blocks.length ?? 0;
+  async function togglePriority(p: Priority) {
+    setPriorities((list) => list.map((x) => (x.id === p.id ? { ...x, done: !x.done } : x)));
+    await supabase.from('priorities').update({ done: !p.done }).eq('id', p.id);
+  }
+
+  async function deletePriority(p: Priority) {
+    setPriorities((list) => list.filter((x) => x.id !== p.id));
+    await supabase.from('priorities').delete().eq('id', p.id);
+  }
+
+  function toggleMood(m: string) {
+    setMood((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]));
+  }
+
+  async function generatePlan() {
+    if (!userId) return;
+    setPlanLoading(true);
+    try {
+      const res = await fetch('/api/day-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, date, energy, hours: hours ? parseInt(hours, 10) : null, mood: mood.join(', ') }),
+      });
+      const data = await res.json();
+      setBlocks((data.blocks || []).map((b: DayBlock) => ({ ...b, done: false })));
+      setDeferred(data.deferred || []);
+      setAdvice(data.advice || '');
+    } catch { /* ignore */ }
+    setPlanLoading(false);
+  }
+
+  async function toggleBlock(i: number) {
+    const updated = blocks.map((b, idx) => (idx === i ? { ...b, done: !b.done } : b));
+    setBlocks(updated);
+    await supabase.from('day_plans').update({ blocks: updated }).eq('user_id', userId).eq('date', date);
+  }
+
+  if (!loaded) return <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spinner /></div>;
+
+  const MOODS = ['Focused', 'Tired', 'Anxious', 'Motivated', 'Busy', 'Calm'];
 
   return (
-    <div style={{ padding:'0 16px' }}>
-
-      {/* ── Header ─────────────────────────────── */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:20, paddingTop:8 }}>
+    <div style={{ padding: 'max(20px, env(safe-area-inset-top)) 20px 20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontSize:13, color:'#6B6359' }}>{greet}{profile?.first_name ? `, ${profile.first_name}` : ''}</div>
-          <button onClick={() => setQuoteIdx(i=>(i+1)%12)} style={{ display:'flex', alignItems:'center', gap:8, background:'none', border:'none', cursor:'pointer', padding:0 }}>
-            <Logo size={28} />
-            <span style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:'#1A1815', letterSpacing:'-0.3px' }}>ASCEND</span>
-          </button>
-          <div style={{ fontSize:12, color:'#A8A095', marginTop:3, fontStyle:'italic' }}>{getQuote(quoteIdx)}</div>
+          <div style={{ color: C.muted, fontSize: 14 }}>{greeting()},</div>
+          <div className="serif" style={{ fontSize: 28, fontWeight: 600 }}>{firstName || 'there'}</div>
         </div>
-        {total > 0 && (
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontFamily:'Georgia,serif', fontSize:24, fontWeight:700, color:'#1A1815', lineHeight:1 }}>{done}/{total}</div>
-            <div style={{ fontSize:10, color:'#A8A095', marginTop:3 }}>done today</div>
-          </div>
-        )}
+        <button onClick={cycleQuote}><Logo size={40} /></button>
       </div>
 
-      {/* ── Priorities ─────────────────────────── */}
-      <div className="slabel">Today's Priorities</div>
-      <div className="card" style={{ marginBottom:16 }}>
-        <div style={{ display:'flex', gap:8, marginBottom:priorities.length>0?10:0 }}>
-          <input value={newPri} onChange={e=>setNewPri(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addPri()} placeholder="What MUST happen today?"
-            style={{ flex:1, padding:'9px 12px', borderRadius:10, border:'none', background:'#F8F5EF', fontSize:14, color:'#1A1815', outline:'none' }} />
-          <button onClick={addPri} disabled={!newPri.trim()} style={{ width:36,height:36,borderRadius:10,background:'#D9531E',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',opacity:newPri.trim()?1:0.4,flexShrink:0 }}>
-            <Plus size={16} color="#fff" />
-          </button>
+      {showQuote && (
+        <div className="fadein" key={quoteIdx} style={{ marginTop: 14, padding: '14px 16px', background: C.orangeSoft, borderRadius: 14, color: C.dark, fontSize: 14.5, fontStyle: 'italic', fontFamily: SERIF }}>
+          “{QUOTES[quoteIdx]}”
         </div>
-        {priorities.length===0 && <div style={{ fontSize:12,color:'#A8A095',fontStyle:'italic',textAlign:'center',padding:'4px 0' }}>Pin 1–3 must-dos. The rest is bonus.</div>}
-        {priorities.map((p,i) => (
-          <div key={p.id} style={{ display:'flex',alignItems:'center',gap:9,paddingTop:10,borderTop:i>0?'1px solid rgba(26,24,21,0.06)':'none' }}>
-            <button onClick={()=>togglePri(p.id,p.done)} style={{ background:'none',border:'none',cursor:'pointer',padding:0,flexShrink:0 }}>
-              {p.done ? <CheckCircle2 size={20} color="#D9531E" fill="#FFE9DD" /> : <Circle size={20} color="#A8A095" />}
-            </button>
-            <div style={{ width:20,height:20,borderRadius:6,background:i===0?'#D9531E':i===1?'#B8721C':'#A8A095',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-              <span style={{ fontSize:9,fontWeight:700,color:'#fff' }}>P{i+1}</span>
-            </div>
-            <span style={{ flex:1,fontSize:14,color:p.done?'#A8A095':'#1A1815',textDecoration:p.done?'line-through':'none' }}>{p.text}</span>
-            <button onClick={()=>delPri(p.id)} style={{ background:'none',border:'none',cursor:'pointer',opacity:0.3,padding:2,flexShrink:0 }}>
-              <X size={14} />
-            </button>
+      )}
+
+      {/* Priorities */}
+      <div style={{ marginTop: 24 }}>
+        <SectionTitle>Today&apos;s priorities</SectionTitle>
+        <Card style={{ padding: 14 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input value={newPrio} onChange={(e) => setNewPrio(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addPriority()}
+              placeholder="Add a priority…"
+              style={{ flex: 1, padding: '11px 12px', borderRadius: 11, border: `1px solid ${C.border}`, fontSize: 16, outline: 'none' }} />
+            <button onClick={addPriority} style={{ width: 44, borderRadius: 11, background: C.orange, color: '#fff', fontSize: 22 }}>+</button>
           </div>
-        ))}
-      </div>
-
-      {/* ── Day Plan ────────────────────────────── */}
-      <div className="slabel">AI Day Plan</div>
-
-      {/* Generate card */}
-      <div className="card" style={{ marginBottom:12, overflow:'hidden' }}>
-        <button onClick={()=>setFormOpen(f=>!f)} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',background:'none',border:'none',cursor:'pointer',padding:0 }}>
-          <div style={{ display:'flex',alignItems:'center',gap:10 }}>
-            <div style={{ width:36,height:36,borderRadius:10,background:'#FFE9DD',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-              <Sparkles size={16} color="#D9531E" />
-            </div>
-            <div style={{ textAlign:'left' }}>
-              <div style={{ fontSize:14,fontWeight:700,color:'#1A1815' }}>{dayPlan?'Regenerate':'Generate Day Plan'}</div>
-              <div style={{ fontSize:11,color:'#6B6359',marginTop:1 }}>Questions optional · tap to generate</div>
-            </div>
-          </div>
-          {formOpen ? <ChevronUp size={16} color="#A8A095" /> : <ChevronDown size={16} color="#A8A095" />}
-        </button>
-
-        {formOpen && (
-          <div style={{ borderTop:'1px solid rgba(26,24,21,0.06)',paddingTop:14,marginTop:12 }}>
-            <QLabel>Energy?</QLabel>
-            <div style={{ display:'flex',gap:6,marginBottom:12 }}>
-              {ENERGY.map(e => <Chip key={e.id} label={e.label} active={selE===e.id} onClick={()=>setSelE(e.id)} />)}
-            </div>
-            <QLabel>Hours available?</QLabel>
-            <div style={{ display:'flex',gap:6,marginBottom:12 }}>
-              {HOURS.map(h => <Chip key={h.id} label={h.label} active={selH===h.id} onClick={()=>setSelH(h.id)} />)}
-            </div>
-            <QLabel>Anything specific?</QLabel>
-            <div style={{ display:'flex',gap:6,flexWrap:'wrap',marginBottom:14 }}>
-              {MOOD.map(m => <Chip key={m.id} label={m.label} active={selM===m.id} onClick={()=>setSelM(m.id)} />)}
-            </div>
-            <button onClick={generate} disabled={generating} className="btn-primary">
-              {generating ? <><Loader2 size={15} style={{ animation:'spin 1s linear infinite' }} /> Building...</> : <><Sparkles size={15} /> Generate Day Plan</>}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {generating && <div style={{ display:'flex',alignItems:'center',gap:10,padding:'16px 0',color:'#6B6359' }}><Loader2 size={16} color="#D9531E" style={{ animation:'spin 1s linear infinite' }} /><span style={{ fontSize:13 }}>Building your day around your goals...</span></div>}
-
-      {!generating && dayPlan && (
-        <>
-          <div style={{ background:'#FFE9DD',borderRadius:12,padding:'10px 14px',marginBottom:10,display:'flex',gap:8,alignItems:'flex-start' }}>
-            <Sparkles size={13} color="#D9531E" style={{ marginTop:1,flexShrink:0 }} />
-            <span style={{ fontSize:12,color:'#B33E0E',lineHeight:1.5 }}>{dayPlan.advice}</span>
-          </div>
-          {dayPlan.blocks.map((b,i) => <Block key={i} block={b} onToggle={()=>toggleBlock(i)} />)}
-          {dayPlan.deferred.length>0 && (
-            <>
-              <div className="slabel" style={{ marginTop:10 }}>Deferred — honest</div>
-              {dayPlan.deferred.map((d,i) => (
-                <div key={i} style={{ background:'#F8F5EF',borderRadius:12,padding:'10px 14px',marginBottom:6,border:'1px solid rgba(26,24,21,0.06)' }}>
-                  <div style={{ fontSize:13,fontWeight:600,color:'#6B6359',textDecoration:'line-through' }}>{d.task}</div>
-                  <div style={{ fontSize:11,color:'#A8A095',marginTop:3 }}>{d.reason}</div>
+          {priorities.length > 0 && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {priorities.map((p) => (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button onClick={() => togglePriority(p)}
+                    style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, border: `2px solid ${p.done ? C.orange : C.faint}`, background: p.done ? C.orange : 'transparent', color: '#fff', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {p.done ? '✓' : ''}
+                  </button>
+                  <span style={{ flex: 1, fontSize: 14.5, textDecoration: p.done ? 'line-through' : 'none', color: p.done ? C.faint : C.dark }}>{p.text}</span>
+                  <button onClick={() => deletePriority(p)} style={{ color: C.faint, fontSize: 18, padding: '0 4px' }}>×</button>
                 </div>
               ))}
-            </>
+            </div>
           )}
-          <button onClick={()=>setFormOpen(true)} style={{ display:'flex',alignItems:'center',gap:5,margin:'8px 0 24px',padding:'7px 12px',borderRadius:10,border:'1px solid rgba(26,24,21,0.1)',background:'#fff',cursor:'pointer',fontSize:12,fontWeight:600,color:'#6B6359' }}>
-            <RefreshCw size={12} /> Regenerate
-          </button>
-        </>
-      )}
+        </Card>
+      </div>
 
-      {!generating && !dayPlan && (
-        <div style={{ background:'#fff',borderRadius:14,padding:'24px',border:'1px dashed rgba(217,83,30,0.3)',textAlign:'center',marginBottom:24 }}>
-          <div style={{ fontSize:13,color:'#6B6359',marginBottom:12 }}>No plan yet — tap "Generate Day Plan" above.</div>
-          <button onClick={()=>{ setFormOpen(false); generate(); }} style={{ display:'inline-flex',alignItems:'center',gap:6,background:'#D9531E',color:'#fff',border:'none',borderRadius:12,padding:'10px 20px',fontSize:13,fontWeight:700,cursor:'pointer' }}>
-            <Sparkles size={13} /> Quick generate
-          </button>
-        </div>
-      )}
+      {/* AI Day Plan */}
+      <div style={{ marginTop: 24 }}>
+        <SectionTitle>AI day plan</SectionTitle>
+        <Card>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <Label>Energy</Label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {['Low', 'Medium', 'High'].map((e) => (
+                  <button key={e} onClick={() => setEnergy(e)} style={chip(energy === e)}>{e}</button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Hours available</Label>
+              <input value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 4" inputMode="numeric"
+                style={{ width: 90, padding: '10px 12px', borderRadius: 11, border: `1px solid ${C.border}`, fontSize: 16, outline: 'none' }} />
+            </div>
+            <div>
+              <Label>Mood</Label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                {MOODS.map((m) => (
+                  <button key={m} onClick={() => toggleMood(m)} style={chip(mood.includes(m))}>{m}</button>
+                ))}
+              </div>
+            </div>
+            <button onClick={generatePlan} disabled={planLoading}
+              style={{ marginTop: 4, padding: '13px', borderRadius: 13, background: planLoading ? C.faint : C.orange, color: '#fff', fontWeight: 600, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}>
+              {planLoading && <Spinner size={17} color="#fff" />}
+              {blocks.length ? 'Regenerate plan' : 'Generate plan'}
+            </button>
+          </div>
+        </Card>
+
+        {advice && (
+          <div style={{ marginTop: 12, padding: '12px 14px', background: C.orangeSoft, borderRadius: 13, fontSize: 14, color: C.dark }}>
+            💡 {advice}
+          </div>
+        )}
+
+        {blocks.length > 0 && (
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {blocks.map((b, i) => {
+              const a = area(b.area);
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, padding: '12px 14px' }}>
+                  <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: a.color }} />
+                  <div style={{ width: 66, flexShrink: 0, fontSize: 12.5, fontWeight: 600, color: C.muted }}>{b.time}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 600, textDecoration: b.done ? 'line-through' : 'none', color: b.done ? C.faint : C.dark }}>{b.task}</div>
+                    <div style={{ fontSize: 12, color: C.muted }}>{a.emoji} {a.label}{b.duration ? ` · ${b.duration}` : ''}</div>
+                  </div>
+                  <button onClick={() => toggleBlock(i)}
+                    style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, border: `2px solid ${b.done ? a.color : C.faint}`, background: b.done ? a.color : 'transparent', color: '#fff', fontSize: 14 }}>
+                    {b.done ? '✓' : ''}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {deferred.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <Label>Deferred</Label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {deferred.map((d, i) => (
+                <div key={i} style={{ background: C.sand, borderRadius: 12, padding: '10px 13px' }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark }}>{d.task}</div>
+                  <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{d.reason}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ── Sub-components ───────────────────────────────────────────
-function Block({ block, onToggle }: { block: DayBlock; onToggle: ()=>void }) {
-  const a = area(block.area);
-  return (
-    <button onClick={onToggle} style={{ display:'flex',alignItems:'center',gap:10,width:'100%',background:block.done?'#F8F5EF':'#fff',border:'1px solid rgba(26,24,21,0.08)',borderRadius:14,padding:'12px',marginBottom:8,cursor:'pointer',textAlign:'left' }}>
-      <div style={{ textAlign:'right',width:40,flexShrink:0 }}>
-        <span style={{ fontSize:11,fontWeight:700,color:'#A8A095' }}>{block.time}</span>
-      </div>
-      <div style={{ width:3,alignSelf:'stretch',borderRadius:2,background:a.color,flexShrink:0 }} />
-      <div style={{ flex:1,minWidth:0 }}>
-        <div style={{ fontSize:14,fontWeight:600,color:block.done?'#A8A095':'#1A1815',textDecoration:block.done?'line-through':'none',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{block.task}</div>
-        <div style={{ fontSize:11,color:'#A8A095',marginTop:3 }}>
-          <span style={{ background:a.soft,color:a.color,padding:'1px 6px',borderRadius:4,fontWeight:700,marginRight:5,fontSize:10 }}>{a.label}</span>
-          {block.duration}
-        </div>
-      </div>
-      {block.done ? <CheckCircle2 size={18} color={a.color} fill={a.soft} style={{ flexShrink:0 }} /> : <Circle size={18} color="#A8A095" style={{ flexShrink:0 }} />}
-    </button>
-  );
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, marginBottom: 10 }}>{children}</div>;
 }
-function Chip({ label, active, onClick }: { label:string; active:boolean; onClick:()=>void }) {
-  return (
-    <button onClick={onClick} style={{ flex:1,padding:'8px 4px',borderRadius:10,border:`1.5px solid ${active?'#D9531E':'rgba(26,24,21,0.1)'}`,background:active?'#FFE9DD':'#fff',cursor:'pointer',fontSize:12,fontWeight:600,color:active?'#D9531E':'#6B6359',whiteSpace:'nowrap' }}>
-      {label}
-    </button>
-  );
+function Label({ children }: { children: React.ReactNode }) {
+  return <div style={{ fontSize: 12.5, fontWeight: 600, color: C.muted, marginBottom: 7 }}>{children}</div>;
 }
-function QLabel({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize:12,fontWeight:700,color:'#1A1815',marginBottom:8 }}>{children}</div>;
-}
-function Logo({ size=32 }: { size?: number }) {
-  return (
-    <div style={{ width:size,height:size,borderRadius:Math.round(size*0.26),background:'#D9531E',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
-      <svg width={size*0.7} height={size*0.7} viewBox="0 0 38 38" fill="none">
-        <path d="M10 28L19 10L28 28" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M14.5 22H23.5" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round"/>
-      </svg>
-    </div>
-  );
-}
-function Spinner() {
-  return <div style={{ display:'flex',alignItems:'center',justifyContent:'center',height:'60dvh' }}><Loader2 size={24} color="#D9531E" style={{ animation:'spin 1s linear infinite' }} /></div>;
+function chip(active: boolean): React.CSSProperties {
+  return {
+    padding: '8px 14px', borderRadius: 10, fontSize: 13.5, fontWeight: 600,
+    background: active ? C.orange : C.sand, color: active ? '#fff' : C.muted,
+  };
 }

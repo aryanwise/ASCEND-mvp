@@ -1,62 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
 import { supabaseAdmin } from '@/lib/supabase';
+import { groq, parseJSON } from '@/lib/groq';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
+interface PlanTask { name: string; frequency: string; duration: string; }
+interface Plan { title: string; duration: string; tasks: PlanTask[]; summary: string; }
 
 export async function POST(req: NextRequest) {
-  const { userId, area, goalText, dialogue, motivation, archetype } = await req.json();
-  const admin = supabaseAdmin();
+  try {
+    const { userId, area, goal, dialogue, contextSummary, motivation, archetype, markOnboarded } = await req.json();
+    if (!userId || !area || !goal) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
 
-  const qa = (dialogue as {role:string;content:string}[]).map(m => `${m.role}: ${m.content}`).join('\n');
+    // Support both the new conversational summary and the legacy Q&A array.
+    const qa = contextSummary
+      ? String(contextSummary)
+      : Array.isArray(dialogue)
+      ? dialogue.map((d: { q: string; a: string }) => `Q: ${d.q}\nA: ${d.a}`).join('\n\n')
+      : '';
 
-  const res = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
-    max_tokens: 700,
-    messages: [
-      {
-        role: 'system',
-        content: `Build a realistic goal plan from the user's answers. Archetype: ${archetype}.
-Return ONLY valid JSON:
-{
-  "title": "goal title (5 words max)",
-  "duration": "X weeks",
-  "summary": "2 sentence summary",
-  "tasks": [
-    { "name": "task name", "frequency": "daily OR weekly:3x OR weekly:Mon,Wed,Fri", "duration": "X min" }
-  ],
-  "tips": ["tip1", "tip2"]
-}
-Rules: 2-4 tasks max. Realistic for archetype. Strip <think> tags from output.`,
-      },
-      { role: 'user', content: `Area: ${area}\nGoal: ${goalText}\nDialogue:\n${qa}` },
-    ],
-  });
+    const raw = await groq(
+      [
+        {
+          role: 'system',
+          content:
+            'You are Ascend, an elite goal architect. Turn the user\'s goal + context into a concrete plan with 3-5 recurring tasks. Account for their archetype/schedule and past failures. Tasks must be specific and doable. Return STRICT JSON: {"title":"short goal title","duration":"e.g. 12 weeks","summary":"one motivating sentence","tasks":[{"name":"...","frequency":"e.g. 3x/week","duration":"e.g. 30 min"}]}. 3-5 tasks. No preamble.',
+        },
+        {
+          role: 'user',
+          content: `Area: ${area}\nGoal: ${goal}\nArchetype: ${archetype || 'unknown'}\nMotivation: ${motivation || 'n/a'}\n\nIntake conversation summary:\n${qa}`,
+        },
+      ],
+      { json: true, temperature: 0.6, maxTokens: 900 }
+    );
 
-  const raw = res.choices[0]?.message?.content ?? '{}';
-  const text = raw.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/```json|```/g, '').trim();
+    const plan = parseJSON<Plan>(raw, {
+      title: goal.slice(0, 60),
+      duration: '8 weeks',
+      summary: 'A focused plan to move you forward.',
+      tasks: [
+        { name: 'Take one concrete action toward the goal', frequency: 'Daily', duration: '20 min' },
+        { name: 'Review progress and adjust', frequency: 'Weekly', duration: '15 min' },
+      ],
+    });
 
-  let plan: { title:string; duration:string; summary:string; tasks:{name:string;frequency:string;duration:string}[]; tips:string[] };
-  try { plan = JSON.parse(text); }
-  catch {
-    plan = { title: goalText.slice(0,40), duration:'12 weeks', summary:'A realistic plan built for your life.', tasks:[{ name:'Daily practice', frequency:'daily', duration:'30 min' }], tips:[] };
+    const db = supabaseAdmin();
+
+    const { data: goalRow, error: gErr } = await db
+      .from('goals')
+      .insert({
+        user_id: userId,
+        title: plan.title || goal.slice(0, 60),
+        area,
+        duration: plan.duration || null,
+        motivation: motivation || null,
+        plan_json: plan,
+      })
+      .select()
+      .single();
+    if (gErr || !goalRow) return NextResponse.json({ error: gErr?.message || 'insert failed' }, { status: 500 });
+
+    const tasks = (plan.tasks || []).slice(0, 6).map((t) => ({
+      goal_id: goalRow.id,
+      user_id: userId,
+      name: t.name,
+      frequency: t.frequency || null,
+      duration: t.duration || null,
+    }));
+    if (tasks.length) {
+      const { error: tErr } = await db.from('tasks').insert(tasks);
+      if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
+    }
+
+    if (markOnboarded) {
+      await db.from('profiles').update({ onboarded: true }).eq('id', userId);
+    }
+
+    return NextResponse.json({ ok: true, goal: goalRow });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
-
-  const { data: goal } = await admin.from('goals').insert({
-    user_id: userId, title: plan.title, area, duration: plan.duration,
-    motivation, status: 'active', needs_recalibration: false, completion_pct: 0,
-    plan_json: { summary: plan.summary, tips: plan.tips },
-  }).select().single();
-
-  if (goal) {
-    await admin.from('tasks').insert(plan.tasks.map(t => ({
-      goal_id: goal.id, user_id: userId,
-      name: t.name, frequency: t.frequency, duration: t.duration, consecutive_misses: 0,
-    })));
-  }
-
-  // Mark onboarded
-  await admin.from('profiles').update({ onboarded: true }).eq('id', userId);
-
-  return NextResponse.json({ success: true });
 }

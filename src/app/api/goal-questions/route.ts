@@ -1,41 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
+import { groq, parseJSON } from '@/lib/groq';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+export const runtime = 'nodejs';
+export const maxDuration = 10;
 
 export async function POST(req: NextRequest) {
-  const { area, goalText, rephrase, previousQuestion } = await req.json();
-
-  const system = rephrase
-    ? `The user didn't understand this question: "${previousQuestion}". Rephrase it from a completely different angle. Give a concrete example specific to ${area}. Return ONLY a JSON array with one question: ["rephrased question"]`
-    : `Generate exactly 3 questions to understand this ${area} goal: "${goalText}".
-- Question 1: current reality and honest constraints
-- Question 2: time and schedule availability  
-- Question 3: past attempts — what worked briefly, what broke it
-Max 20 words each. Return ONLY a JSON array: ["q1", "q2", "q3"]`;
-
-  const response = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
-    max_tokens: 300,
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: rephrase ? 'Rephrase it.' : `Area: ${area}\nGoal: ${goalText}` },
-    ],
-  });
-
-  const text = response.choices[0]?.message?.content ?? '[]';
   try {
-    const questions = JSON.parse(text.replace(/```json|```/g, '').trim());
-    return NextResponse.json({ questions });
-  } catch {
-    return NextResponse.json({
-      questions: rephrase
-        ? ["Let's try differently — what does your typical week look like right now?"]
-        : [
-            "What's your honest starting point right now?",
-            "How many hours per week can you realistically commit?",
-            "You've tried this before — what made it fall apart?",
-          ],
+    const { area, goal, rephrase, previousQuestion } = await req.json();
+    if (!area || !goal) {
+      return NextResponse.json({ error: 'Missing area or goal' }, { status: 400 });
+    }
+
+    if (rephrase && previousQuestion) {
+      const raw = await groq(
+        [
+          { role: 'system', content: 'You are a concise goal coach. Rephrase the given question more simply and concretely so it is easy to answer. Return JSON: {"question":"..."}. No preamble.' },
+          { role: 'user', content: `Area: ${area}\nGoal: ${goal}\nRephrase this question more simply: "${previousQuestion}"` },
+        ],
+        { json: true, temperature: 0.5, maxTokens: 300 }
+      );
+      const out = parseJSON<{ question: string }>(raw, { question: previousQuestion });
+      return NextResponse.json({ question: out.question });
+    }
+
+    const raw = await groq(
+      [
+        {
+          role: 'system',
+          content:
+            'You are an elite goal coach doing intake. Given a goal area and description, write exactly 3 short, sharp questions to understand the person. Question 1: their CURRENT reality/starting point. Question 2: their TIME and schedule constraints. Question 3: PAST attempts and what went wrong. Keep each under 18 words, conversational, no jargon. Return strict JSON: {"questions":["q1","q2","q3"]}. No preamble.',
+        },
+        { role: 'user', content: `Area: ${area}\nGoal: ${goal}` },
+      ],
+      { json: true, temperature: 0.6, maxTokens: 400 }
+    );
+
+    const out = parseJSON<{ questions: string[] }>(raw, {
+      questions: [
+        'Where are you starting from right now with this?',
+        'How much time can you realistically give this each week?',
+        'Have you tried before? What got in the way?',
+      ],
     });
+    const questions = (out.questions || []).slice(0, 3);
+    while (questions.length < 3) questions.push('Tell me more about your situation.');
+    return NextResponse.json({ questions });
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
 }

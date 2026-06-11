@@ -1,75 +1,75 @@
 'use client';
-import { useState } from 'react';
-import { Sparkles, Loader2, Check } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/context/AuthContext';
+import { C, SERIF } from '@/lib/design';
+import { PrimaryButton, Spinner } from '@/components/ui';
 
-const TAGS = ['😴 Fatigue','💼 Work overload','🌀 Lack of focus','🤒 Unwell','😶 Unmotivated','🌊 Overwhelmed','⏰ No time','📵 Distracted'];
+const BLOCKERS = ['No time', 'Low energy', 'Distracted', 'Anxious', 'Unmotivated', 'Overwhelmed', 'Forgot', 'Sick'];
 
-export default function Reflect() {
-  const { user } = useAuth();
-  const [sel, setSel]         = useState<string[]>([]);
-  const [free, setFree]       = useState('');
-  const [reply, setReply]     = useState('');
+export default function ReflectPage() {
+  const [userId, setUserId] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [note, setNote] = useState('');
+  const [insight, setInsight] = useState('');
   const [loading, setLoading] = useState(false);
-  const [saved, setSaved]     = useState(false);
 
-  const toggle = (t:string) => setSel(s=>s.includes(t)?s.filter(x=>x!==t):[...s,t]);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const id = data.session?.user?.id;
+      if (!id) { window.location.href = '/auth'; return; }
+      setUserId(id);
+    });
+  }, []);
 
-  const reflect = async () => {
-    if (sel.length===0&&!free.trim()) return;
+  function toggle(b: string) {
+    setSelected((s) => (s.includes(b) ? s.filter((x) => x !== b) : [...s, b]));
+  }
+
+  async function submit() {
+    if (selected.length === 0 && !note.trim()) return;
     setLoading(true);
-    const ctx = [...sel, free].filter(Boolean).join(', ');
-    const res = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      system:`You are Ascend. User is reflecting on blockers: ${ctx}. Respond in 2-3 sentences: acknowledge honestly then give ONE concrete reframe or action. No generic advice. No "that's okay!" filler.`,
-      messages:[{role:'user',content:'Here is what has been getting in my way.'}]
-    })});
-    const data = await res.json();
-    setReply(data.content??'');
-    if (user) await supabase.from('recalibrations').insert({user_id:user.id,reason:ctx,ai_proposal:data.content,accepted:false});
-    setLoading(false); setSaved(true);
-  };
-
-  const reset = () => { setSel([]); setFree(''); setReply(''); setSaved(false); };
+    setInsight('');
+    try {
+      const res = await fetch('/api/reflect', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, blockers: selected, note: note.trim() }),
+      });
+      const data = await res.json();
+      setInsight(data.insight || '');
+    } catch { /* ignore */ }
+    setLoading(false);
+  }
 
   return (
-    <div style={{padding:'0 16px',paddingTop:8}}>
-      <h1 style={{fontFamily:'Georgia,serif',fontSize:24,fontWeight:700,color:'#1A1815',marginBottom:4,marginTop:8}}>Reflect</h1>
-      <div style={{fontSize:13,color:'#6B6359',marginBottom:20,lineHeight:1.5}}>Log what's been getting in your way. Patterns become insights.</div>
+    <div style={{ padding: 'max(20px, env(safe-area-inset-top)) 20px 20px' }}>
+      <h1 className="serif" style={{ fontSize: 28, fontWeight: 600, margin: '0 0 6px' }}>Reflect</h1>
+      <p style={{ color: C.muted, fontSize: 14.5, margin: '0 0 22px' }}>What got in the way? Honesty here is how the plan gets better.</p>
 
-      {!reply ? (
-        <>
-          <div style={{fontSize:14,fontWeight:700,color:'#1A1815',marginBottom:12}}>What's been blocking you?</div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:16}}>
-            {TAGS.map(t=>(
-              <button key={t} onClick={()=>toggle(t)} style={{padding:'8px 12px',borderRadius:99,border:`1.5px solid ${sel.includes(t)?'#D9531E':'rgba(26,24,21,0.1)'}`,background:sel.includes(t)?'#FFE9DD':'#fff',cursor:'pointer',fontSize:13,fontWeight:600,color:sel.includes(t)?'#D9531E':'#6B6359'}}>
-                {t}
-              </button>
-            ))}
-          </div>
-          <div style={{fontSize:14,fontWeight:700,color:'#1A1815',marginBottom:8}}>Anything else?</div>
-          <textarea value={free} onChange={e=>setFree(e.target.value)} rows={3} placeholder="Write anything on your mind..."
-            style={{width:'100%',padding:'12px',borderRadius:14,border:'1px solid rgba(26,24,21,0.1)',background:'#fff',fontSize:14,color:'#1A1815',outline:'none',resize:'none',marginBottom:16,lineHeight:1.5}} />
-          <button onClick={reflect} disabled={(sel.length===0&&!free.trim())||loading} className="btn-primary" style={{opacity:(sel.length===0&&!free.trim())?0.4:1}}>
-            {loading ? <><Loader2 size={15} style={{animation:'spin 1s linear infinite'}} /> Getting insight...</> : <><Sparkles size={15} /> Get AI insight</>}
-          </button>
-        </>
-      ) : (
-        <div className="fade-up">
-          <div style={{background:'#1A1815',borderRadius:16,padding:'18px',marginBottom:16}}>
-            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:10}}>
-              <Sparkles size={13} color="#D9531E" />
-              <span style={{fontSize:10,fontWeight:700,color:'#D9531E',letterSpacing:'1.5px',textTransform:'uppercase'}}>Ascend's take</span>
-            </div>
-            <div style={{fontSize:14,color:'rgba(255,255,255,0.9)',lineHeight:1.65,fontFamily:'Georgia,serif',fontStyle:'italic'}}>"{reply}"</div>
-          </div>
-          {saved && (
-            <div style={{display:'flex',alignItems:'center',gap:6,background:'#D9F0E5',borderRadius:10,padding:'10px 14px',marginBottom:16}}>
-              <Check size={14} color="#1B7A5C" />
-              <span style={{fontSize:12,fontWeight:600,color:'#1B7A5C'}}>Saved — Ascend will look for patterns over time</span>
-            </div>
-          )}
-          <button onClick={reset} className="btn-secondary">Reflect again</button>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: C.muted, marginBottom: 10 }}>Select what applies</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
+        {BLOCKERS.map((b) => (
+          <button key={b} onClick={() => toggle(b)} style={{
+            padding: '10px 16px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+            background: selected.includes(b) ? C.orange : '#fff',
+            color: selected.includes(b) ? '#fff' : C.muted,
+            border: `1.5px solid ${selected.includes(b) ? C.orange : C.border}`,
+          }}>{b}</button>
+        ))}
+      </div>
+
+      <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} placeholder="Anything else on your mind…"
+        style={{ width: '100%', marginTop: 18, padding: '14px 15px', borderRadius: 14, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none' }} />
+
+      <div style={{ marginTop: 16 }}>
+        <PrimaryButton onClick={submit} loading={loading} disabled={selected.length === 0 && !note.trim()}>Get honest insight</PrimaryButton>
+      </div>
+
+      {loading && <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}><Spinner /></div>}
+
+      {insight && (
+        <div className="fadein" style={{ marginTop: 22, padding: '18px 20px', background: C.orangeSoft, borderRadius: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.orange, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Reframe</div>
+          <div style={{ fontSize: 15.5, color: C.dark, lineHeight: 1.55, fontFamily: SERIF }}>{insight}</div>
         </div>
       )}
     </div>

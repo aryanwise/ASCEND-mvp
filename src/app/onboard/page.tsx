@@ -1,328 +1,293 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ChevronRight, ChevronLeft, Sparkles, Loader2 } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { detectPlatform, isInstalled, registerSW, subscribePush } from '@/lib/utils';
-import type { AreaId, Archetype } from '@/types';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { waitForSession } from '@/lib/session';
+import { C, SERIF, AREA_LIST, ARCHETYPES } from '@/lib/design';
+import { Logo, PrimaryButton, Spinner } from '@/components/ui';
 
-type Step = 'install'|'profile'|'archetype'|'goal_area'|'goal_questions'|'motivation';
+type Step = 'profile' | 'archetype' | 'goal_area' | 'conversation' | 'motivation';
+interface Turn { role: 'assistant' | 'user'; content: string; }
 
-const ARCHETYPES = [
-  { id:'rigid_9to5',   emoji:'🗓️', label:'The 9-to-5',     desc:'Structured work, free evenings'            },
-  { id:'nocturnal_dev',emoji:'🌙', label:'The Night Owl',   desc:'Late nights, fluid hours, chaotic mornings' },
-  { id:'deep_worker',  emoji:'🎯', label:'The Deep Worker', desc:'Large unstructured focus blocks'            },
-  { id:'student',      emoji:'📖', label:'The Student',     desc:'Mixed schedule, deadlines drive everything'  },
-] as const;
+export default function OnboardPage() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const stepsList: Step[] = ['profile', 'archetype', 'goal_area', 'conversation', 'motivation'];
+  const [stepIdx, setStepIdx] = useState(0);
+  const step = stepsList[stepIdx];
 
-const AREAS = [
-  { id:'fitness',emoji:'💪',label:'Fitness' },{ id:'study',  emoji:'📚',label:'Study'  },
-  { id:'career', emoji:'💼',label:'Career'  },{ id:'diet',   emoji:'🥗',label:'Diet'   },
-  { id:'mind',   emoji:'🧠',label:'Mind'    },{ id:'money',  emoji:'💰',label:'Money'  },
-  { id:'health', emoji:'❤️',label:'Health' },{ id:'habits', emoji:'✨',label:'Habits' },
-  { id:'custom', emoji:'🎯',label:'Custom'  },
-] as const;
-
-export default function Onboard() {
-  const { user }   = useAuth();
-  const router     = useRouter();
-  const platform   = detectPlatform();
-  const installed  = isInstalled();
-
-  const [step, setStep] = useState<Step>('profile');
+  // profile
   const [firstName, setFirstName] = useState('');
-  const [lastName,  setLastName]  = useState('');
-  const [age,       setAge]       = useState('');
-  const [archetype, setArchetype] = useState<Archetype|null>(null);
-  const [goalArea,  setGoalArea]  = useState<AreaId|null>(null);
-  const [goalText,  setGoalText]  = useState('');
-  const [questions, setQuestions] = useState<string[]>([]);
-  const [qIdx,      setQIdx]      = useState(0);
-  const [dialogue,  setDialogue]  = useState<{role:'user'|'assistant';content:string}[]>([]);
-  const [answer,    setAnswer]    = useState('');
-  const [motivation,setMotivation]= useState('');
-  const [loadingQ,  setLoadingQ]  = useState(false);
-  const [saving,    setSaving]    = useState(false);
+  const [lastName, setLastName] = useState('');
+  const [age, setAge] = useState('');
+  // archetype
+  const [archetype, setArchetype] = useState('');
+  // goal
+  const [areaKey, setAreaKey] = useState('');
+  const [goalText, setGoalText] = useState('');
+  // conversation
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [thinking, setThinking] = useState(false);
+  const [convoDone, setConvoDone] = useState(false);
+  const [contextSummary, setContextSummary] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  // motivation
+  const [motivation, setMotivation] = useState('');
+
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
 
   useEffect(() => {
-    if (step === 'goal_questions' && questions.length === 0) {
-      setLoadingQ(true);
-      fetch('/api/goal-questions', {
+    waitForSession().then((session) => {
+      if (!session) { window.location.href = '/auth'; return; }
+      setUserId(session.user.id);
+    });
+  }, []);
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns, thinking]);
+
+  async function startConversation() {
+    setThinking(true);
+    setErr('');
+    setTurns([]);
+    setConvoDone(false);
+    setContextSummary('');
+    try {
+      const res = await fetch('/api/onboard-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area: goalArea, goalText }),
-      })
-        .then(r => r.json())
-        .then(d => { setQuestions(d.questions ?? []); setLoadingQ(false); });
+        body: JSON.stringify({ area: areaKey, goal: goalText, firstName, history: [] }),
+      });
+      const data = await res.json();
+      if (data.message) setTurns([{ role: 'assistant', content: data.message }]);
+      if (data.done) { setConvoDone(true); setContextSummary(data.context_summary || ''); }
+    } catch {
+      setErr('Could not start the conversation. Try again.');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
-
-  const submitAnswer = async () => {
-  if (!answer.trim()) return;
-  const isIdk = /^(idk|i don't know|not sure|unsure|no idea|idk|dunno|maybe|hmm)/i.test(answer.trim());
-
-  if (isIdk) {
-    // Rephrase the same question
-    const res = await fetch('/api/goal-questions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ area: goalArea, goalText, rephrase: true, previousQuestion: questions[qIdx] }),
-    });
-    const data = await res.json();
-    const newQ = data.questions?.[0] ?? questions[qIdx];
-    const updated = [...questions];
-    updated[qIdx] = newQ;
-    setQuestions(updated);
-    setAnswer('');
-    return;
+    setThinking(false);
   }
 
-  setDialogue(d => [...d,
-    { role: 'assistant', content: questions[qIdx] },
-    { role: 'user', content: answer.trim() },
-  ]);
-  setAnswer('');
-  if (qIdx < questions.length - 1) setQIdx(i => i + 1);
-  else setStep('motivation');
-};
-
-  const finish = async () => {
-  setSaving(true);
-
-  // Get userId directly from session (more reliable than context)
-  const { data: sessionData } = await supabase.auth.getSession();
-  const userId = sessionData.session?.user?.id;
-
-  if (!userId) {
-    setSaving(false);
-    window.location.href = '/auth';
-    return;
+  async function sendChat() {
+    const content = chatInput.trim();
+    if (!content || thinking || convoDone) return;
+    setChatInput('');
+    const nextTurns: Turn[] = [...turns, { role: 'user', content }];
+    setTurns(nextTurns);
+    setThinking(true);
+    try {
+      const res = await fetch('/api/onboard-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ area: areaKey, goal: goalText, firstName, history: nextTurns }),
+      });
+      const data = await res.json();
+      if (data.message) setTurns([...nextTurns, { role: 'assistant', content: data.message }]);
+      if (data.done) { setConvoDone(true); setContextSummary(data.context_summary || ''); }
+    } catch {
+      setTurns([...nextTurns, { role: 'assistant', content: 'Hmm, I lost my train of thought — say that once more?' }]);
+    }
+    setThinking(false);
   }
 
-  await fetch('/api/profile', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, firstName, lastName, age: age ? parseInt(age) : null, archetype }),
-  });
+  async function next() {
+    setErr('');
+    if (step === 'profile') {
+      if (!firstName.trim() || !lastName.trim()) { setErr('Enter your first and last name.'); return; }
+      setStepIdx(1);
+    } else if (step === 'archetype') {
+      if (!archetype) { setErr('Pick the one that fits best.'); return; }
+      setStepIdx(2);
+    } else if (step === 'goal_area') {
+      if (!areaKey) { setErr('Pick a goal area.'); return; }
+      if (goalText.trim().length < 6) { setErr('Describe your goal a bit more.'); return; }
+      setStepIdx(3);
+      await startConversation();
+    } else if (step === 'conversation') {
+      if (!convoDone) { setErr('Finish chatting with your coach first — just a couple more replies.'); return; }
+      setStepIdx(4);
+    } else if (step === 'motivation') {
+      await finish();
+    }
+  }
 
-  await fetch('/api/goals/create', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, area: goalArea, goalText, dialogue, motivation, archetype }),
-  });
+  function back() {
+    setErr('');
+    if (stepIdx > 0) setStepIdx(stepIdx - 1);
+  }
 
-  window.location.href = '/app';
-};
+  async function finish() {
+    if (!userId) return;
+    if (motivation.trim().length < 4) { setErr('A real reason will keep you going — write it down.'); return; }
+    setBusy(true);
+    try {
+      const pRes = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId, first_name: firstName.trim(), last_name: lastName.trim(),
+          age: age ? parseInt(age, 10) : null, archetype,
+        }),
+      });
+      if (!pRes.ok) { const d = await pRes.json().catch(() => ({})); throw new Error(d.error || 'Could not save your profile.'); }
 
-  const stepsList: Step[] = ['profile','archetype','goal_area','goal_questions','motivation'];
-  const stepNum = stepsList.indexOf(step);
+      const summary = contextSummary || turns.map((t) => `${t.role}: ${t.content}`).join(' | ');
+      const gRes = await fetch('/api/goals/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId, area: areaKey, goal: goalText, contextSummary: summary,
+          motivation: motivation.trim(), archetype, markOnboarded: true,
+        }),
+      });
+      if (!gRes.ok) { const d = await gRes.json().catch(() => ({})); throw new Error(d.error || 'Could not build your plan.'); }
+
+      window.location.href = '/app';
+    } catch (e) {
+      setErr((e as Error).message || 'Something went wrong.');
+      setBusy(false);
+    }
+  }
 
   return (
-    <div className="shell" style={{ padding: '0 20px' }}>
-      <div className="scroll pt-safe" style={{ paddingBottom: 40 }}>
+    <div className="shell">
+      <div style={{ padding: 'max(24px, env(safe-area-inset-top)) 24px 0' }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {stepsList.map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= stepIdx ? C.orange : C.sand }} />
+          ))}
+        </div>
+      </div>
 
-        {step !== 'install' && (
-          <div style={{ display:'flex', gap:4, paddingTop:16, marginBottom:24 }}>
-            {stepsList.slice(1).map((_, i) => (
-              <div key={i} style={{ height:3, flex:1, borderRadius:2, background: i < stepNum ? '#D9531E' : 'rgba(26,24,21,0.12)' }} />
-            ))}
-          </div>
-        )}
-
-        {/* INSTALL */}
-        {step === 'install' && (
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'80dvh', textAlign:'center' }}>
-            <div style={{ width:64, height:64, borderRadius:16, background:'#D9531E', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:20 }}>
-              <svg width="36" height="36" viewBox="0 0 38 38" fill="none">
-                <path d="M10 28L19 10L28 28" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M14.5 22H23.5" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <h1 style={{ fontFamily:'Georgia,serif', fontSize:26, fontWeight:700, color:'#1A1815', marginBottom:10 }}>Add to home screen</h1>
-            <p style={{ fontSize:14, color:'#6B6359', lineHeight:1.6, marginBottom:28, maxWidth:280 }}>
-              For push notifications, no browser bars, and a native feel.
-            </p>
-            {platform === 'ios' && (
-              <div className="card" style={{ width:'100%', marginBottom:24, textAlign:'left' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#D9531E', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:10 }}>On iPhone</div>
-                {[['1','Tap Share ⬆️','in Safari'],['2','Tap','Add to Home Screen'],['3','Tap','Add']].map(([n,a,b]) => (
-                  <div key={n} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'flex-start' }}>
-                    <div style={{ width:22, height:22, borderRadius:6, background:'#D9531E', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <span style={{ fontSize:11, fontWeight:700, color:'#fff' }}>{n}</span>
-                    </div>
-                    <span style={{ fontSize:13, color:'#1A1815' }}>{a} <strong>{b}</strong></span>
-                  </div>
-                ))}
-              </div>
-            )}
-            {platform === 'android' && (
-              <div className="card" style={{ width:'100%', marginBottom:24, textAlign:'left' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#D9531E', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:10 }}>On Android</div>
-                {[['1','Tap menu ⋮','in Chrome'],['2','Tap','Add to Home screen'],['3','Tap','Add']].map(([n,a,b]) => (
-                  <div key={n} style={{ display:'flex', gap:10, marginBottom:8, alignItems:'flex-start' }}>
-                    <div style={{ width:22, height:22, borderRadius:6, background:'#D9531E', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <span style={{ fontSize:11, fontWeight:700, color:'#fff' }}>{n}</span>
-                    </div>
-                    <span style={{ fontSize:13, color:'#1A1815' }}>{a} <strong>{b}</strong></span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <button onClick={() => setStep('profile')} className="btn-primary">
-              {installed ? 'Continue' : 'Skip for now'} <ChevronRight size={16} />
-            </button>
-          </div>
-        )}
-
-        {/* PROFILE */}
+      <div className="scrollarea no-scrollbar fadein" key={step} style={{ padding: 24, flex: 1, display: 'flex', flexDirection: 'column' }}>
         {step === 'profile' && (
-          <div style={{ paddingTop:20 }}>
-            <h2 style={{ fontFamily:'Georgia,serif', fontSize:24, fontWeight:700, color:'#1A1815', marginBottom:8 }}>What should we call you?</h2>
-            <p style={{ fontSize:14, color:'#6B6359', marginBottom:20, lineHeight:1.5 }}>No password needed — you're already signed in.</p>
-            <div style={{ display:'flex', gap:10 }}>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:12, fontWeight:600, color:'#6B6359', marginBottom:6 }}>First name</div>
-                <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Alex"
-                  style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1px solid rgba(26,24,21,0.1)', background:'#fff', fontSize:14, color:'#1A1815', outline:'none' }} />
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:12, fontWeight:600, color:'#6B6359', marginBottom:6 }}>Last name</div>
-                <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Chen"
-                  style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1px solid rgba(26,24,21,0.1)', background:'#fff', fontSize:14, color:'#1A1815', outline:'none' }} />
-              </div>
-            </div>
-            <div style={{ fontSize:12, fontWeight:600, color:'#6B6359', marginBottom:6, marginTop:14 }}>Age <span style={{ color:'#A8A095', fontWeight:400 }}>(optional)</span></div>
-            <input value={age} onChange={e => setAge(e.target.value)} placeholder="25" type="number"
-              style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1px solid rgba(26,24,21,0.1)', background:'#fff', fontSize:14, color:'#1A1815', outline:'none', marginBottom:24 }} />
-            <button onClick={() => setStep('archetype')} disabled={!firstName.trim()} className="btn-primary">
-              Continue <ChevronRight size={16} />
-            </button>
-          </div>
+          <Section title="Let's get to know you" subtitle="First, the basics.">
+            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" style={inp} />
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" style={inp} />
+            <input value={age} onChange={(e) => setAge(e.target.value.replace(/\D/g, ''))} placeholder="Age (optional)" inputMode="numeric" style={inp} />
+          </Section>
         )}
 
-        {/* ARCHETYPE */}
         {step === 'archetype' && (
-          <div style={{ paddingTop:20 }}>
-            <h2 style={{ fontFamily:'Georgia,serif', fontSize:24, fontWeight:700, color:'#1A1815', marginBottom:8 }}>Which lifestyle fits you?</h2>
-            <p style={{ fontSize:14, color:'#6B6359', marginBottom:20, lineHeight:1.5 }}>Ascend uses this to schedule tasks realistically.</p>
-            <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:24 }}>
-              {ARCHETYPES.map(a => (
-                <button key={a.id} onClick={() => setArchetype(a.id as Archetype)}
-                  style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', borderRadius:16, border:`1.5px solid ${archetype===a.id?'#D9531E':'rgba(26,24,21,0.08)'}`, background:archetype===a.id?'#FFE9DD':'#fff', cursor:'pointer', textAlign:'left' }}>
-                  <span style={{ fontSize:26 }}>{a.emoji}</span>
-                  <div>
-                    <div style={{ fontSize:15, fontWeight:700, color:archetype===a.id?'#D9531E':'#1A1815' }}>{a.label}</div>
-                    <div style={{ fontSize:12, color:'#6B6359', marginTop:2 }}>{a.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => setStep('profile')} className="btn-secondary" style={{ width:52, flexShrink:0, padding:0 }}>
-                <ChevronLeft size={18} />
+          <Section title="How does your life run?" subtitle="This shapes how Ascend schedules you.">
+            {ARCHETYPES.map((a) => (
+              <button key={a.key} onClick={() => setArchetype(a.key)} style={selectCard(archetype === a.key)}>
+                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: SERIF }}>{a.title}</div>
+                <div style={{ fontSize: 13.5, color: C.muted, marginTop: 3 }}>{a.desc}</div>
               </button>
-              <button onClick={() => setStep('goal_area')} disabled={!archetype} className="btn-primary" style={{ flex:1 }}>
-                Continue <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
+            ))}
+          </Section>
         )}
 
-        {/* GOAL AREA */}
         {step === 'goal_area' && (
-          <div style={{ paddingTop:20 }}>
-            <h2 style={{ fontFamily:'Georgia,serif', fontSize:24, fontWeight:700, color:'#1A1815', marginBottom:8 }}>What do you want to work on?</h2>
-            <p style={{ fontSize:14, color:'#6B6359', marginBottom:20, lineHeight:1.5 }}>Start with one goal. You can add more later.</p>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
-              {AREAS.map(a => (
-                <button key={a.id} onClick={() => setGoalArea(a.id as AreaId)}
-                  style={{ display:'flex', alignItems:'center', gap:10, padding:'14px', borderRadius:14, border:`1.5px solid ${goalArea===a.id?'#D9531E':'rgba(26,24,21,0.08)'}`, background:goalArea===a.id?'#FFE9DD':'#fff', cursor:'pointer' }}>
-                  <span style={{ fontSize:20 }}>{a.emoji}</span>
-                  <span style={{ fontSize:14, fontWeight:600, color:goalArea===a.id?'#D9531E':'#1A1815' }}>{a.label}</span>
+          <Section title="What do you want to change?" subtitle="Pick an area, then describe it.">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+              {AREA_LIST.map((a) => (
+                <button key={a.key} onClick={() => setAreaKey(a.key)}
+                  style={{
+                    padding: '12px 6px', borderRadius: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                    background: areaKey === a.key ? a.soft : '#fff',
+                    border: `1.5px solid ${areaKey === a.key ? a.color : C.border}`,
+                  }}>
+                  <span style={{ fontSize: 22 }}>{a.emoji}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.dark }}>{a.label}</span>
                 </button>
               ))}
             </div>
-            {goalArea && (
-              <>
-                <div style={{ fontSize:12, fontWeight:600, color:'#6B6359', marginBottom:8 }}>Describe what you want to achieve</div>
-                <textarea value={goalText} onChange={e => setGoalText(e.target.value)} rows={3}
-                  placeholder="Be specific and honest about your constraints..."
-                  style={{ width:'100%', padding:'12px', borderRadius:12, border:'1px solid rgba(26,24,21,0.1)', background:'#fff', fontSize:14, color:'#1A1815', outline:'none', resize:'none', marginBottom:16, lineHeight:1.5 }} />
-              </>
-            )}
-            <div style={{ display:'flex', gap:10 }}>
-              <button onClick={() => setStep('archetype')} className="btn-secondary" style={{ width:52, flexShrink:0, padding:0 }}>
-                <ChevronLeft size={18} />
-              </button>
-              <button onClick={() => setStep('goal_questions')} disabled={!goalArea || !goalText.trim()} className="btn-primary" style={{ flex:1 }}>
-                Continue <ChevronRight size={16} />
-              </button>
+            <textarea value={goalText} onChange={(e) => setGoalText(e.target.value)} rows={3}
+              placeholder="e.g. Run a half marathon in 4 months without injuring my knee again"
+              style={{ ...inp, marginTop: 12 }} />
+          </Section>
+        )}
+
+        {step === 'conversation' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div style={{ marginBottom: 6 }}><Logo size={32} /></div>
+            <h1 className="serif" style={{ fontSize: 24, fontWeight: 600, margin: '6px 0 14px' }}>Let&apos;s talk it through</h1>
+
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }} className="no-scrollbar">
+              {turns.map((t, i) => (
+                <div key={i} className="fadein" style={{ display: 'flex', justifyContent: t.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                  <div style={{
+                    maxWidth: '85%', padding: '11px 15px', borderRadius: 18, fontSize: 14.5, lineHeight: 1.5, whiteSpace: 'pre-wrap',
+                    background: t.role === 'user' ? C.orange : '#fff',
+                    color: t.role === 'user' ? '#fff' : C.dark,
+                    border: t.role === 'user' ? 'none' : `1px solid ${C.border}`,
+                    borderBottomRightRadius: t.role === 'user' ? 5 : 18,
+                    borderBottomLeftRadius: t.role === 'user' ? 18 : 5,
+                  }}>{t.content}</div>
+                </div>
+              ))}
+              {thinking && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <div style={{ padding: '13px 17px', background: '#fff', border: `1px solid ${C.border}`, borderRadius: 18, borderBottomLeftRadius: 5, display: 'flex', gap: 5 }}>
+                    {[0, 1, 2].map((d) => (<span key={d} className="dot" style={{ width: 7, height: 7, borderRadius: '50%', background: C.faint }} />))}
+                  </div>
+                </div>
+              )}
+              {convoDone && (
+                <div className="fadein" style={{ textAlign: 'center', fontSize: 13, color: C.muted, padding: '8px 0' }}>
+                  ✓ Got everything I need — tap Continue below.
+                </div>
+              )}
+              <div ref={chatEndRef} />
             </div>
-          </div>
-        )}
 
-        {/* QUESTIONS */}
-        {step === 'goal_questions' && (
-          <div style={{ paddingTop:20 }}>
-            <h2 style={{ fontFamily:'Georgia,serif', fontSize:24, fontWeight:700, color:'#1A1815', marginBottom:8 }}>A few questions.</h2>
-            <p style={{ fontSize:14, color:'#6B6359', marginBottom:20, lineHeight:1.5 }}>
-              Honest answers = plan that fits your life. Say <strong>"idk"</strong> if unsure — I'll rephrase.
-            </p>
-            {loadingQ ? (
-              <div style={{ display:'flex', alignItems:'center', gap:10, color:'#6B6359' }}>
-                <Loader2 size={16} color="#D9531E" style={{ animation:'spin 1s linear infinite' }} />
-                <span style={{ fontSize:13 }}>Preparing your questions...</span>
+            {!convoDone && (
+              <div style={{ display: 'flex', gap: 9, alignItems: 'flex-end', paddingTop: 12 }}>
+                <textarea value={chatInput} onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
+                  rows={1} placeholder="Type your reply…"
+                  style={{ flex: 1, padding: '12px 14px', borderRadius: 16, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none', maxHeight: 110 }} />
+                <button onClick={sendChat} disabled={!chatInput.trim() || thinking}
+                  style={{ width: 44, height: 44, borderRadius: '50%', background: chatInput.trim() ? C.orange : C.faint, color: '#fff', fontSize: 19, flexShrink: 0 }}>↑</button>
               </div>
-            ) : (
-              <>
-                {dialogue.map((m, i) => (
-                  <div key={i} style={{ marginBottom:10, display:'flex', justifyContent: m.role==='user' ? 'flex-end' : 'flex-start' }}>
-                    <div style={{ padding:'10px 14px', borderRadius:12, background: m.role==='assistant' ? '#FFE9DD' : '#1A1815', color: m.role==='assistant' ? '#B33E0E' : '#fff', fontSize:13, lineHeight:1.55, maxWidth:'90%' }}>
-                      {m.content}
-                    </div>
-                  </div>
-                ))}
-                {questions[qIdx] && (
-                  <div className="fade-up">
-                    <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:10 }}>
-                      <Sparkles size={13} color="#D9531E" />
-                      <span style={{ fontSize:11, color:'#D9531E', fontWeight:700 }}>Question {qIdx+1} of {questions.length}</span>
-                    </div>
-                    <div style={{ fontSize:16, fontWeight:600, color:'#1A1815', lineHeight:1.55, marginBottom:14 }}>
-                      {questions[qIdx]}
-                    </div>
-                    <textarea value={answer} onChange={e => setAnswer(e.target.value)} rows={3}
-                      placeholder="Be honest — or say 'idk' if you're not sure"
-                      style={{ width:'100%', padding:'12px', borderRadius:12, border:'1px solid rgba(26,24,21,0.1)', background:'#fff', fontSize:14, color:'#1A1815', outline:'none', resize:'none', marginBottom:12, lineHeight:1.5 }} />
-                    <button onClick={submitAnswer} disabled={!answer.trim()} className="btn-primary">
-                      {qIdx < questions.length - 1 ? 'Next question' : 'Last one'} <ChevronRight size={16} />
-                    </button>
-                  </div>
-                )}
-              </>
             )}
           </div>
         )}
 
-        {/* MOTIVATION */}
         {step === 'motivation' && (
-          <div style={{ paddingTop:20 }}>
-            <h2 style={{ fontFamily:'Georgia,serif', fontSize:24, fontWeight:700, color:'#1A1815', marginBottom:8 }}>Why does this matter to you?</h2>
-            <p style={{ fontSize:14, color:'#6B6359', marginBottom:20, lineHeight:1.5 }}>
-              This becomes your reminder when things get hard.
-            </p>
-            <textarea value={motivation} onChange={e => setMotivation(e.target.value)} rows={5}
-              placeholder='"I want to feel strong and be there for the people I love."'
-              style={{ width:'100%', padding:'14px', borderRadius:14, border:'1.5px solid rgba(26,24,21,0.1)', background:'#fff', fontSize:14, color:'#1A1815', outline:'none', resize:'none', marginBottom:20, lineHeight:1.6 }} />
-            <button onClick={finish} disabled={saving} className="btn-primary">
-              {saving
-                ? <><Loader2 size={15} style={{ animation:'spin 1s linear infinite' }} /> Building your plan...</>
-                : <><Sparkles size={15} /> Build my plan</>
-              }
-            </button>
-          </div>
+          <Section title="Why does this matter?" subtitle="Ascend will remind you of this when it gets hard.">
+            <textarea value={motivation} onChange={(e) => setMotivation(e.target.value)} rows={4}
+              placeholder="The real reason behind this goal…" style={inp} />
+          </Section>
         )}
 
+        {err && <div style={{ color: '#C62828', fontSize: 13.5, marginTop: 10 }}>{err}</div>}
+      </div>
+
+      <div style={{ padding: '12px 24px max(20px, env(safe-area-inset-bottom))', display: 'flex', gap: 10, borderTop: `1px solid ${C.border}` }}>
+        {stepIdx > 0 && (
+          <button onClick={back} style={{ padding: '15px 22px', borderRadius: 14, background: C.sand, color: C.dark, fontWeight: 600 }}>Back</button>
+        )}
+        <div style={{ flex: 1 }}>
+          <PrimaryButton onClick={next} loading={busy || (step === 'conversation' && thinking && turns.length === 0)}>
+            {step === 'motivation' ? 'Build my plan' : 'Continue'}
+          </PrimaryButton>
+        </div>
       </div>
     </div>
   );
+}
+
+function Section({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ marginBottom: 6 }}><Logo size={34} /></div>
+      <h1 className="serif" style={{ fontSize: 26, fontWeight: 600, margin: '8px 0 4px' }}>{title}</h1>
+      <p style={{ color: C.muted, fontSize: 14.5, margin: '0 0 20px' }}>{subtitle}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{children}</div>
+    </div>
+  );
+}
+
+const inp: React.CSSProperties = {
+  width: '100%', padding: '14px 15px', borderRadius: 13,
+  border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none',
+};
+
+function selectCard(active: boolean): React.CSSProperties {
+  return {
+    width: '100%', textAlign: 'left', padding: '15px 16px', borderRadius: 14,
+    background: active ? C.orangeSoft : '#fff',
+    border: `1.5px solid ${active ? C.orange : C.border}`,
+  };
 }
