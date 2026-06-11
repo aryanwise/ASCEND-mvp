@@ -13,6 +13,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
+      // Wait for the session to actually hydrate after a hard navigation,
+      // instead of trusting a single immediate getSession() (the redirect race).
       const session = await waitForSession();
       if (!session) {
         window.location.href = isStandalone() ? '/auth' : '/install';
@@ -20,15 +22,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
       const id = session.user.id;
 
+      // Fast-path: onboarding just finished and redirected here with ?onboarded=1.
+      // We already KNOW the profile was marked onboarded, so don't race a fresh
+      // read against the just-committed write — trust it and clean the URL.
+      const justOnboarded =
+        typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('onboarded') === '1';
+      if (justOnboarded) {
+        window.history.replaceState({}, '', '/app');
+        setReady(true);
+        return;
+      }
+
+      // Otherwise read onboarding status, retrying until it reads TRUE (not just
+      // until the row exists). A read replica can briefly return stale `false`
+      // right after the write, so we re-check a few times before giving up.
       let onboarded = false;
-      for (let attempt = 0; attempt < 2; attempt++) {
+      for (let attempt = 0; attempt < 4; attempt++) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('onboarded')
           .eq('id', id)
           .maybeSingle();
-        if (profile) { onboarded = !!profile.onboarded; break; }
-        await new Promise((r) => setTimeout(r, 350));
+        if (profile?.onboarded) { onboarded = true; break; }
+        await new Promise((r) => setTimeout(r, 400));
       }
 
       if (!onboarded) { window.location.href = '/onboard'; return; }

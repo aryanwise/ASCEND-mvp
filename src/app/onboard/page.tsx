@@ -140,7 +140,7 @@ export default function OnboardPage() {
       });
       if (!gRes.ok) { const d = await gRes.json().catch(() => ({})); throw new Error(d.error || 'Could not build your plan.'); }
 
-      window.location.href = '/app';
+      window.location.href = '/app?onboarded=1';
     } catch (e) {
       setErr((e as Error).message || 'Something went wrong.');
       setBusy(false);
