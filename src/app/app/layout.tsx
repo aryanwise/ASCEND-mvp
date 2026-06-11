@@ -38,14 +38,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       // until the row exists). A read replica can briefly return stale `false`
       // right after the write, so we re-check a few times before giving up.
       let onboarded = false;
-      for (let attempt = 0; attempt < 4; attempt++) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('onboarded')
-          .eq('id', id)
-          .maybeSingle();
-        if (profile?.onboarded) { onboarded = true; break; }
-        await new Promise((r) => setTimeout(r, 400));
+      try {
+        const res = await fetch('/api/profile-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: id }),
+        });
+        const data = await res.json();
+        onboarded = !!data.onboarded;
+      } catch {
+        onboarded = true;
       }
 
       if (!onboarded) { window.location.href = '/onboard'; return; }
