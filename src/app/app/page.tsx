@@ -219,7 +219,7 @@ export default function HomePage() {
       {/* Options sheet */}
       {sheet && (
         <div onClick={() => setSheet(null)} className="fadein" style={{ position: 'absolute', inset: 0, zIndex: 100, background: 'rgba(26,24,21,0.4)', display: 'flex', alignItems: 'flex-end' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: '20px 20px max(24px, env(safe-area-inset-bottom))' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxHeight: '85%', overflowY: 'auto', background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: '20px 20px max(24px, env(safe-area-inset-bottom))' }}>
             <div style={{ width: 40, height: 4, background: C.sand, borderRadius: 3, margin: '0 auto 18px' }} />
             {sheet === 'options' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

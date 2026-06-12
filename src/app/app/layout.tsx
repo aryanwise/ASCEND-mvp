@@ -54,12 +54,41 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Disable horizontal swipe-back/forward gesture — this is an app, not a webpage.
+  // In a standalone PWA the edge swipe walks the history stack; we block any
+  // touch gesture that starts near the left/right screen edge and moves mostly
+  // horizontally, which is what triggers back/forward.
   useEffect(() => {
+    const EDGE = 32; // px from either edge that counts as an "edge swipe"
+    let startX = 0;
+    let startY = 0;
+    let fromEdge = false;
+
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      fromEdge = startX <= EDGE || startX >= window.innerWidth - EDGE;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!fromEdge) return;
+      const t = e.touches[0];
+      const dx = Math.abs(t.clientX - startX);
+      const dy = Math.abs(t.clientY - startY);
+      // Mostly-horizontal drag that began at the edge -> kill it.
+      if (dx > dy && dx > 8 && e.cancelable) e.preventDefault();
+    };
+
+    document.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('touchmove', onMove, { passive: false });
+
     const prevB = document.body.style.overscrollBehaviorX;
     const prevH = document.documentElement.style.overscrollBehaviorX;
     document.body.style.overscrollBehaviorX = 'none';
     document.documentElement.style.overscrollBehaviorX = 'none';
+
     return () => {
+      document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchmove', onMove);
       document.body.style.overscrollBehaviorX = prevB;
       document.documentElement.style.overscrollBehaviorX = prevH;
     };
