@@ -4,50 +4,51 @@ import { supabaseAdmin } from '@/lib/supabase';
 export const runtime = 'nodejs';
 export const maxDuration = 10;
 
-// Computes the current streak: consecutive days (ending today or yesterday) on
-// which the user completed at least one check-in. A full missed day breaks it.
-// Returns { streak, completedToday }.
+// LOGIN streak: counts consecutive days the user OPENED the app (ending today).
+// Opening the app marks today as active (idempotent — only the date matters, not
+// how many times). A full missed day breaks the streak. Active days are stored
+// in user_memory under key 'active_days' as a JSON array of YYYY-MM-DD strings,
+// so no schema change is needed.
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await req.json();
     if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
 
     const db = supabaseAdmin();
-    // Look back up to 90 days of completed check-ins.
-    const since = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-    const { data, error } = await db
-      .from('daily_check_ins')
-      .select('date, completed')
-      .eq('user_id', userId)
-      .eq('completed', true)
-      .gte('date', since);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    // Set of YYYY-MM-DD strings that had at least one completion.
-    const days = new Set<string>((data || []).map((r) => r.date));
-
     const iso = (d: Date) => d.toISOString().slice(0, 10);
-    const today = new Date();
-    const todayStr = iso(today);
-    const completedToday = days.has(todayStr);
+    const today = iso(new Date());
 
-    // Start counting from today if done today, else from yesterday (so an
-    // in-progress day that's not done yet doesn't show a broken streak).
-    let streak = 0;
-    const cursor = new Date(today);
-    if (!completedToday) cursor.setDate(cursor.getDate() - 1);
+    // Read existing active days.
+    const { data: row } = await db
+      .from('user_memory')
+      .select('value')
+      .eq('user_id', userId)
+      .eq('key', 'active_days')
+      .maybeSingle();
 
-    // Walk backwards while each day has a completion.
-    for (let i = 0; i < 90; i++) {
-      if (days.has(iso(cursor))) {
-        streak++;
-        cursor.setDate(cursor.getDate() - 1);
-      } else {
-        break;
-      }
+    let days: string[] = Array.isArray(row?.value) ? (row!.value as string[]) : [];
+
+    // Mark today active (only if not already present — keeps it idempotent).
+    if (!days.includes(today)) {
+      days.push(today);
+      // Keep the list bounded (last ~120 days is plenty for streaks).
+      days = days.sort().slice(-120);
+      await db.from('user_memory').upsert(
+        { user_id: userId, key: 'active_days', value: days, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,key' }
+      );
     }
 
-    return NextResponse.json({ streak, completedToday });
+    // Compute consecutive streak ending today.
+    const set = new Set(days);
+    let streak = 0;
+    const cursor = new Date();
+    for (let i = 0; i < 120; i++) {
+      if (set.has(iso(cursor))) { streak++; cursor.setDate(cursor.getDate() - 1); }
+      else break;
+    }
+
+    return NextResponse.json({ streak });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

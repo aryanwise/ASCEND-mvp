@@ -42,7 +42,6 @@ export default function HomePage() {
         });
         const data = await res.json();
         setFirstName(data.firstName || '');
-        setStreak(data.streak || 0);
         setPriorities(data.priorities || []);
         const plan = data.dayPlan;
         if (plan) {
@@ -52,6 +51,16 @@ export default function HomePage() {
           setEnergy(plan.energy || 'Medium');
           if (plan.hours_available) setHours(String(plan.hours_available));
         }
+      } catch { /* ignore */ }
+
+      // Login streak — records today's visit and returns the consecutive count.
+      try {
+        const sres = await fetch('/api/streak', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: id }),
+        });
+        const sdata = await sres.json();
+        setStreak(sdata.streak || 0);
       } catch { /* ignore */ }
       setLoaded(true);
     })();
@@ -165,9 +174,9 @@ export default function HomePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <SectionTitle noMargin>AI day plan</SectionTitle>
           <button onClick={() => setSheet('options')}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, background: C.orange, color: '#fff', borderRadius: 12, padding: '9px 15px', fontWeight: 600, fontSize: 14 }}>
-            {planLoading ? <Spinner size={15} color="#fff" /> : <span style={{ fontSize: 16 }}>✦</span>}
-            {hasPlan ? 'Update' : 'Generate'}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, flexShrink: 0, whiteSpace: 'nowrap', background: C.orange, color: '#fff', borderRadius: 12, padding: '10px 18px', fontWeight: 600, fontSize: 14 }}>
+            {planLoading ? <Spinner size={15} color="#fff" /> : <span style={{ fontSize: 15 }}>✦</span>}
+            <span>{hasPlan ? 'Update' : 'Generate'}</span>
           </button>
         </div>
 
