@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import ReactDOM from 'react-dom';
 import { C, SERIF } from '@/lib/design';
 
 export function Logo({ size = 38 }: { size?: number }) {
@@ -97,3 +98,33 @@ export const headingStyle: React.CSSProperties = {
   color: C.dark,
   margin: 0,
 };
+
+// Bottom sheet that renders via portal to document.body, escaping the shell's
+// scroll/transform context so position:fixed truly anchors to the viewport.
+// Caps at the visible height and scrolls internally — never gets cut off.
+export function BottomSheet({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || typeof document === 'undefined') return null;
+  return ReactDOM.createPortal(
+    <div onClick={onClose} className="fadein"
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(26,24,21,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 430,
+          maxHeight: 'calc(var(--app-vh, 100svh) - 40px)',
+          display: 'flex', flexDirection: 'column',
+          background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26,
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+        }}>
+        <div style={{ flexShrink: 0, padding: '12px 0 0' }}>
+          <div style={{ width: 40, height: 4, background: C.sand, borderRadius: 3, margin: '0 auto' }} />
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '12px 20px max(24px, env(safe-area-inset-bottom))' }}>
+          {children}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}

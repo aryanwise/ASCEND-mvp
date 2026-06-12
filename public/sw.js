@@ -1,8 +1,7 @@
-const CACHE = 'ascend-v1';
-const CORE = ['/', '/app', '/manifest.json'];
+// Bump this version on each deploy to force the SW to update.
+const CACHE = 'ascend-v3';
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).catch(() => {}));
   self.skipWaiting();
 });
 
@@ -15,15 +14,29 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const { request } = e;
-  if (request.method !== 'GET' || new URL(request.url).pathname.startsWith('/api')) return;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.pathname.startsWith('/api')) return;
+
+  // NETWORK-FIRST for navigations/HTML so new deploys show up immediately
+  // (no reinstall needed). Falls back to cache only when offline.
+  if (request.mode === 'navigate' || request.destination === 'document') {
+    e.respondWith(
+      fetch(request).catch(() => caches.match(request).then((r) => r || caches.match('/app')))
+    );
+    return;
+  }
+
+  // Stale-while-revalidate for other assets.
   e.respondWith(
-    fetch(request)
-      .then((res) => {
+    caches.match(request).then((cached) => {
+      const fetched = fetch(request).then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(request, copy)).catch(() => {});
         return res;
-      })
-      .catch(() => caches.match(request).then((r) => r || caches.match('/app')))
+      }).catch(() => cached);
+      return cached || fetched;
+    })
   );
 });
 

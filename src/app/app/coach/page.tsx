@@ -117,7 +117,7 @@ export default function CoachPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 'calc(100dvh - 86px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'max(18px, env(safe-area-inset-top)) 18px 14px', borderBottom: `1px solid ${C.border}` }}>
         <button onClick={() => setSidebar(true)} style={{ fontSize: 22, color: C.dark }}>☰</button>

@@ -26,17 +26,25 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* Lock the page so only .scrollarea scrolls. Without this, focusing an input
+   lets iOS scroll the whole body and shove the nav off-screen. */
+body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
 /* Phone shell — centered 430px column. On desktop it floats on a warm bg. */
 .shell {
   position: relative;
   width: 100%;
   max-width: 430px;
-  /* Exact viewport height (not min-height) so the bottom nav stays pinned and
-     long content scrolls INSIDE .scrollarea instead of pushing the shell taller
-     than the screen. 100dvh tracks the dynamic viewport (keyboard/url bar). */
-  height: 100dvh;
+  /* JS sets --app-vh from window.visualViewport (tracks the keyboard on iOS).
+     Falls back to svh/dvh before the JS runs. */
   height: 100svh;
-  max-height: 100dvh;
+  height: var(--app-vh, 100svh);
+  max-height: var(--app-vh, 100dvh);
   margin: 0 auto;
   background: var(--bg);
   display: flex;
@@ -45,7 +53,7 @@ html, body {
   -webkit-overflow-scrolling: touch;
 }
 @media (min-width: 500px) {
-  body { display: flex; align-items: center; justify-content: center; min-height: 100dvh; }
+  body { display: flex; align-items: center; justify-content: center; }
   .shell {
     height: min(900px, 96dvh);
     max-height: min(900px, 96dvh);

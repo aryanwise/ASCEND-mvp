@@ -53,6 +53,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  // Lock the shell to the ACTUAL visible viewport. iOS PWAs don't reliably honor
+  // dvh/svh when the keyboard opens — the page scrolls and pushes the nav off
+  // screen. visualViewport reports the true visible height (shrinking when the
+  // keyboard appears), so we set it as a CSS var the shell uses for its height.
+  useEffect(() => {
+    const setVH = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight;
+      document.documentElement.style.setProperty('--app-vh', `${h}px`);
+      // Keep the window pinned to top so the keyboard can't scroll the shell away.
+      window.scrollTo(0, 0);
+    };
+    setVH();
+    window.visualViewport?.addEventListener('resize', setVH);
+    window.visualViewport?.addEventListener('scroll', setVH);
+    window.addEventListener('resize', setVH);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', setVH);
+      window.visualViewport?.removeEventListener('scroll', setVH);
+      window.removeEventListener('resize', setVH);
+    };
+  }, []);
+
   // Disable horizontal swipe-back/forward gesture — this is an app, not a webpage.
   // In a standalone PWA the edge swipe walks the history stack; we block any
   // touch gesture that starts near the left/right screen edge and moves mostly

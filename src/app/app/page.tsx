@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { waitForSession } from '@/lib/session';
 import { C, SERIF, area, greeting, todayISO, dailyQuote, nextQuote } from '@/lib/design';
-import { Logo, Spinner, Card } from '@/components/ui';
+import { Logo, Spinner, Card, BottomSheet } from '@/components/ui';
 import type { Priority, DayBlock, DeferredItem } from '@/lib/types';
 
 export default function HomePage() {
@@ -225,57 +225,43 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Options sheet — fixed to the shell bottom, never tied to scroll position */}
+      {/* Options sheet — portal to body, escapes shell, never cut off */}
       {sheet && (
-        <div onClick={() => setSheet(null)} className="fadein"
-          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(26,24,21,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div onClick={(e) => e.stopPropagation()}
-            style={{
-              width: '100%', maxWidth: 430, maxHeight: '80dvh',
-              display: 'flex', flexDirection: 'column',
-              background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26,
-              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
-            }}>
-            <div style={{ flexShrink: 0, padding: '12px 0 0' }}>
-              <div style={{ width: 40, height: 4, background: C.sand, borderRadius: 3, margin: '0 auto' }} />
+        <BottomSheet onClose={() => setSheet(null)}>
+          {sheet === 'options' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Day plan</h2>
+              <OptBtn emoji="⚡" title="Quick generate" sub="Build from your goals, no extra input" onClick={() => generatePlan(false)} />
+              <OptBtn emoji="🎭" title="By mood & energy" sub="Tune it to how you feel today" onClick={() => setSheet('mood')} />
+              {hasPlan && <OptBtn emoji="🔄" title="Regenerate" sub="Replace today's plan" onClick={() => generatePlan(false)} />}
             </div>
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 20px max(24px, env(safe-area-inset-bottom))' }}>
-              {sheet === 'options' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Day plan</h2>
-                  <OptBtn emoji="⚡" title="Quick generate" sub="Build from your goals, no extra input" onClick={() => generatePlan(false)} />
-                  <OptBtn emoji="🎭" title="By mood & energy" sub="Tune it to how you feel today" onClick={() => setSheet('mood')} />
-                  {hasPlan && <OptBtn emoji="🔄" title="Regenerate" sub="Replace today's plan" onClick={() => generatePlan(false)} />}
+          )}
+          {sheet === 'mood' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Tune your plan</h2>
+              <div>
+                <Label>Energy</Label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {['Low', 'Medium', 'High'].map((e) => (
+                    <button key={e} onClick={() => setEnergy(e)} style={chip(energy === e)}>{e}</button>
+                  ))}
                 </div>
-              )}
-              {sheet === 'mood' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Tune your plan</h2>
-                  <div>
-                    <Label>Energy</Label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {['Low', 'Medium', 'High'].map((e) => (
-                        <button key={e} onClick={() => setEnergy(e)} style={chip(energy === e)}>{e}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Hours available</Label>
-                    <input value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 4" inputMode="numeric"
-                      style={{ width: 90, padding: '10px 12px', borderRadius: 11, border: `1px solid ${C.border}`, fontSize: 16, outline: 'none' }} />
-                  </div>
-                  <div>
-                    <Label>Mood</Label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                      {MOODS.map((m) => (<button key={m} onClick={() => toggleMood(m)} style={chip(mood.includes(m))}>{m}</button>))}
-                    </div>
-                  </div>
-                  <button onClick={() => generatePlan(true)} style={{ padding: '14px', borderRadius: 14, background: C.orange, color: '#fff', fontWeight: 600, fontSize: 15 }}>Generate plan</button>
+              </div>
+              <div>
+                <Label>Hours available</Label>
+                <input value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 4" inputMode="numeric"
+                  style={{ width: 90, padding: '10px 12px', borderRadius: 11, border: `1px solid ${C.border}`, fontSize: 16, outline: 'none' }} />
+              </div>
+              <div>
+                <Label>Mood</Label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                  {MOODS.map((m) => (<button key={m} onClick={() => toggleMood(m)} style={chip(mood.includes(m))}>{m}</button>))}
                 </div>
-              )}
+              </div>
+              <button onClick={() => generatePlan(true)} style={{ padding: '14px', borderRadius: 14, background: C.orange, color: '#fff', fontWeight: 600, fontSize: 15 }}>Generate plan</button>
             </div>
-          </div>
-        </div>
+          )}
+        </BottomSheet>
       )}
     </div>
   );
