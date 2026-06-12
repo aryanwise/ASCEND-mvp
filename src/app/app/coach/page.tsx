@@ -117,7 +117,13 @@ export default function CoachPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '100%' }}>
+    <div style={{
+      position: 'fixed', left: '50%', transform: 'translateX(-50%)', top: 0,
+      width: '100%', maxWidth: 430,
+      height: 'calc(100svh - var(--kb, 0px))',
+      display: 'flex', flexDirection: 'column',
+      background: C.bg,
+    }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'max(18px, env(safe-area-inset-top)) 18px 14px', borderBottom: `1px solid ${C.border}` }}>
         <button onClick={() => setSidebar(true)} style={{ fontSize: 22, color: C.dark }}>☰</button>
@@ -183,14 +189,15 @@ export default function CoachPage() {
         </div>
       )}
 
-      {/* Input — lifts to sit just above the keyboard (Gemini-style), and clears
-          the fixed nav when the keyboard is closed. */}
+      {/* Input — sits at the bottom of the column. The column shrinks by --kb
+          when the keyboard opens, so this lands just above the keyboard. The
+          marginBottom clears the fixed bottom nav when the keyboard is closed. */}
       <div style={{
         padding: '10px 14px 10px',
-        marginBottom: 'calc(var(--kb, 0px) + 56px + env(safe-area-inset-bottom))',
+        marginBottom: 'max(0px, calc(56px + env(safe-area-inset-bottom) - var(--kb, 0px)))',
         borderTop: `1px solid ${C.border}`, background: C.bg,
         display: 'flex', gap: 9, alignItems: 'flex-end',
-        transition: 'margin-bottom 0.15s ease-out',
+        flexShrink: 0,
       }}>
         <textarea value={input} onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}

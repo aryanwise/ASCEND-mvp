@@ -1,15 +1,14 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { waitForSession } from '@/lib/session';
-import { C, SERIF, area, AREA_LIST } from '@/lib/design';
-import { Spinner, PrimaryButton } from '@/components/ui';
-import type { Goal, QA } from '@/lib/types';
+import { C, area } from '@/lib/design';
+import { Spinner } from '@/components/ui';
+import type { Goal } from '@/lib/types';
 
 export default function GoalsPage() {
   const [userId, setUserId] = useState('');
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [showNew, setShowNew] = useState(false);
 
   async function load(id: string) {
     try {
@@ -51,7 +50,7 @@ export default function GoalsPage() {
     <div style={{ padding: 'max(20px, env(safe-area-inset-top)) 20px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <h1 className="serif" style={{ fontSize: 28, fontWeight: 600, margin: 0 }}>Goals</h1>
-        <button onClick={() => setShowNew(true)} style={{ background: C.orange, color: '#fff', borderRadius: 12, padding: '9px 16px', fontWeight: 600, fontSize: 14 }}>+ New</button>
+        <button onClick={() => (window.location.href = '/app/goals/new')} style={{ background: C.orange, color: '#fff', borderRadius: 12, padding: '9px 16px', fontWeight: 600, fontSize: 14 }}>+ New</button>
       </div>
 
       {active.length === 0 && paused.length === 0 && (
@@ -78,7 +77,6 @@ export default function GoalsPage() {
         </>
       )}
 
-      {showNew && <NewGoalModal userId={userId} onClose={() => setShowNew(false)} onCreated={() => { setShowNew(false); load(userId); }} />}
     </div>
   );
 }
@@ -109,93 +107,3 @@ function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
   );
 }
 
-function NewGoalModal({ userId, onClose, onCreated }: { userId: string; onClose: () => void; onCreated: () => void }) {
-  const [stage, setStage] = useState<'area' | 'questions' | 'motivation'>('area');
-  const [areaKey, setAreaKey] = useState('');
-  const [goalText, setGoalText] = useState('');
-  const [questions, setQuestions] = useState<string[]>([]);
-  const [answers, setAnswers] = useState<string[]>(['', '', '']);
-  const [motivation, setMotivation] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
-
-  async function toQuestions() {
-    setErr('');
-    if (!areaKey || goalText.trim().length < 6) { setErr('Pick an area and describe your goal.'); return; }
-    setLoading(true);
-    const res = await fetch('/api/goal-questions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ area: areaKey, goal: goalText }),
-    });
-    const data = await res.json();
-    setQuestions(data.questions || []);
-    setLoading(false);
-    setStage('questions');
-  }
-  async function create() {
-    setErr('');
-    if (motivation.trim().length < 4) { setErr('Add your reason.'); return; }
-    setLoading(true);
-    const dialogue: QA[] = questions.map((q, i) => ({ q, a: answers[i] }));
-    const res = await fetch('/api/goals/create', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, area: areaKey, goal: goalText, dialogue, motivation: motivation.trim() }),
-    });
-    if (res.ok) onCreated();
-    else { setErr('Could not create goal.'); setLoading(false); }
-  }
-
-  return (
-    <div onClick={onClose} className="fadein" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(26,24,21,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 430, maxHeight: '85svh', overflowY: 'auto', marginBottom: 'var(--kb, 0px)', transition: 'margin-bottom 0.15s ease-out', background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: '20px 20px max(24px, env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.25)' }}>
-        <div style={{ width: 40, height: 4, background: C.sand, borderRadius: 3, margin: '0 auto 16px' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>New goal</h2>
-          <button onClick={onClose} style={{ color: C.faint, fontSize: 24 }}>×</button>
-        </div>
-        {stage === 'area' && (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-              {AREA_LIST.map((a) => (
-                <button key={a.key} onClick={() => setAreaKey(a.key)} style={{
-                  padding: '12px 6px', borderRadius: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                  background: areaKey === a.key ? a.soft : '#fff', border: `1.5px solid ${areaKey === a.key ? a.color : C.border}`,
-                }}>
-                  <span style={{ fontSize: 22 }}>{a.emoji}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>{a.label}</span>
-                </button>
-              ))}
-            </div>
-            <textarea value={goalText} onChange={(e) => setGoalText(e.target.value)} rows={3} placeholder="Describe your goal…" style={inpStyle2} />
-            {err && <div style={{ color: '#C62828', fontSize: 13, marginTop: 8 }}>{err}</div>}
-            <div style={{ marginTop: 14 }}><PrimaryButton onClick={toQuestions} loading={loading}>Continue</PrimaryButton></div>
-          </>
-        )}
-        {stage === 'questions' && (
-          <>
-            {questions.map((q, i) => (
-              <div key={i} style={{ marginBottom: 13 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{q}</div>
-                <textarea value={answers[i]} onChange={(e) => { const n = [...answers]; n[i] = e.target.value; setAnswers(n); }} rows={2} placeholder="Your answer…" style={inpStyle2} />
-              </div>
-            ))}
-            {err && <div style={{ color: '#C62828', fontSize: 13 }}>{err}</div>}
-            <PrimaryButton onClick={() => { if (answers.some((a) => !a.trim())) { setErr('Answer all three.'); return; } setErr(''); setStage('motivation'); }}>Continue</PrimaryButton>
-          </>
-        )}
-        {stage === 'motivation' && (
-          <>
-            <div style={{ fontSize: 14.5, fontWeight: 600, marginBottom: 8 }}>Why does this matter?</div>
-            <textarea value={motivation} onChange={(e) => setMotivation(e.target.value)} rows={4} placeholder="Your real reason…" style={inpStyle2} />
-            {err && <div style={{ color: '#C62828', fontSize: 13, marginTop: 8 }}>{err}</div>}
-            <div style={{ marginTop: 14 }}><PrimaryButton onClick={create} loading={loading}>Build my plan</PrimaryButton></div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const inpStyle2: React.CSSProperties = {
-  width: '100%', marginTop: 12, padding: '13px 14px', borderRadius: 12, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none',
-};
