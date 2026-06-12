@@ -117,7 +117,7 @@ export default function CoachPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'max(18px, env(safe-area-inset-top)) 18px 14px', borderBottom: `1px solid ${C.border}` }}>
         <button onClick={() => setSidebar(true)} style={{ fontSize: 22, color: C.dark }}>☰</button>
@@ -183,8 +183,15 @@ export default function CoachPage() {
         </div>
       )}
 
-      {/* Input */}
-      <div style={{ padding: '10px 14px max(14px, env(safe-area-inset-bottom))', borderTop: `1px solid ${C.border}`, display: 'flex', gap: 9, alignItems: 'flex-end' }}>
+      {/* Input — lifts to sit just above the keyboard (Gemini-style), and clears
+          the fixed nav when the keyboard is closed. */}
+      <div style={{
+        padding: '10px 14px 10px',
+        marginBottom: 'calc(var(--kb, 0px) + 56px + env(safe-area-inset-bottom))',
+        borderTop: `1px solid ${C.border}`, background: C.bg,
+        display: 'flex', gap: 9, alignItems: 'flex-end',
+        transition: 'margin-bottom 0.15s ease-out',
+      }}>
         <textarea value={input} onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
           rows={1} placeholder="Message your coach…"

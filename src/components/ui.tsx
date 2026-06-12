@@ -113,6 +113,8 @@ export function BottomSheet({ onClose, children }: { onClose: () => void; childr
         style={{
           width: '100%', maxWidth: 430,
           maxHeight: '90svh',
+          marginBottom: 'var(--kb, 0px)',
+          transition: 'margin-bottom 0.15s ease-out',
           display: 'flex', flexDirection: 'column',
           background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26,
           boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',

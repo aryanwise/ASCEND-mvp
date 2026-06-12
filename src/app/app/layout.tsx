@@ -53,20 +53,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Keep the window pinned to the top so focusing an input can't scroll the
-  // shell upward. We deliberately do NOT shrink the shell when the keyboard
-  // opens — shrinking made the bottom nav ride up on top of the keyboard.
-  // Instead the shell stays full height and iOS lays the keyboard over it.
+  // Track how much the keyboard covers (the "keyboard inset") and expose it as
+  // --kb so the chat input / sheets can lift to sit just above the keyboard —
+  // like Gemini — WITHOUT shrinking the whole shell (which made the nav float).
   useEffect(() => {
-    const pin = () => window.scrollTo(0, 0);
-    pin();
-    window.visualViewport?.addEventListener('resize', pin);
-    window.visualViewport?.addEventListener('scroll', pin);
-    window.addEventListener('resize', pin);
+    const vv = window.visualViewport;
+    const update = () => {
+      const inset = vv ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop) : 0;
+      document.documentElement.style.setProperty('--kb', `${inset}px`);
+      window.scrollTo(0, 0);
+    };
+    update();
+    vv?.addEventListener('resize', update);
+    vv?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
     return () => {
-      window.visualViewport?.removeEventListener('resize', pin);
-      window.visualViewport?.removeEventListener('scroll', pin);
-      window.removeEventListener('resize', pin);
+      vv?.removeEventListener('resize', update);
+      vv?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
     };
   }, []);
 

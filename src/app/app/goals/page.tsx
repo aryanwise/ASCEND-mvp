@@ -147,7 +147,7 @@ function NewGoalModal({ userId, onClose, onCreated }: { userId: string; onClose:
 
   return (
     <div onClick={onClose} className="fadein" style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(26,24,21,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 430, maxHeight: '88dvh', overflowY: 'auto', background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: '20px 20px max(24px, env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.25)' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 430, maxHeight: '85svh', overflowY: 'auto', marginBottom: 'var(--kb, 0px)', transition: 'margin-bottom 0.15s ease-out', background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: '20px 20px max(24px, env(safe-area-inset-bottom))', boxShadow: '0 -8px 40px rgba(0,0,0,0.25)' }}>
         <div style={{ width: 40, height: 4, background: C.sand, borderRadius: 3, margin: '0 auto 16px' }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>New goal</h2>
