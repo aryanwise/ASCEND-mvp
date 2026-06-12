@@ -2,15 +2,15 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { waitForSession } from '@/lib/session';
-import { C, SERIF, area, greeting, todayISO, QUOTES } from '@/lib/design';
+import { C, SERIF, area, greeting, todayISO, dailyQuote, nextQuote } from '@/lib/design';
 import { Logo, Spinner, Card } from '@/components/ui';
 import type { Priority, DayBlock, DeferredItem } from '@/lib/types';
 
 export default function HomePage() {
   const [userId, setUserId] = useState('');
   const [firstName, setFirstName] = useState('');
-  const [quoteIdx, setQuoteIdx] = useState(0);
-  const [showQuote, setShowQuote] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [quote, setQuote] = useState(dailyQuote());
 
   const [priorities, setPriorities] = useState<Priority[]>([]);
   const [newPrio, setNewPrio] = useState('');
@@ -24,7 +24,10 @@ export default function HomePage() {
   const [planLoading, setPlanLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  const [sheet, setSheet] = useState<null | 'options' | 'mood'>(null);
+
   const date = todayISO();
+  const MOODS = ['Focused', 'Tired', 'Anxious', 'Motivated', 'Busy', 'Calm'];
 
   useEffect(() => {
     (async () => {
@@ -32,15 +35,14 @@ export default function HomePage() {
       if (!session) { window.location.href = '/auth'; return; }
       const id = session.user.id;
       setUserId(id);
-
       try {
         const res = await fetch('/api/home-data', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: id, date }),
         });
         const data = await res.json();
         setFirstName(data.firstName || '');
+        setStreak(data.streak || 0);
         setPriorities(data.priorities || []);
         const plan = data.dayPlan;
         if (plan) {
@@ -55,11 +57,6 @@ export default function HomePage() {
     })();
   }, [date]);
 
-  function cycleQuote() {
-    setShowQuote(true);
-    setQuoteIdx((i) => (i + 1) % QUOTES.length);
-  }
-
   async function addPriority() {
     const text = newPrio.trim();
     if (!text || !userId) return;
@@ -67,29 +64,31 @@ export default function HomePage() {
     const { data } = await supabase.from('priorities').insert({ user_id: userId, date, text, done: false }).select().single();
     if (data) setPriorities((p) => [...p, data]);
   }
-
   async function togglePriority(p: Priority) {
     setPriorities((list) => list.map((x) => (x.id === p.id ? { ...x, done: !x.done } : x)));
     await supabase.from('priorities').update({ done: !p.done }).eq('id', p.id);
   }
-
   async function deletePriority(p: Priority) {
     setPriorities((list) => list.filter((x) => x.id !== p.id));
     await supabase.from('priorities').delete().eq('id', p.id);
   }
-
   function toggleMood(m: string) {
     setMood((cur) => (cur.includes(m) ? cur.filter((x) => x !== m) : [...cur, m]));
   }
 
-  async function generatePlan() {
+  async function generatePlan(useMood: boolean) {
     if (!userId) return;
+    setSheet(null);
     setPlanLoading(true);
     try {
       const res = await fetch('/api/day-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, date, energy, hours: hours ? parseInt(hours, 10) : null, mood: mood.join(', ') }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId, date,
+          energy: useMood ? energy : 'Medium',
+          hours: useMood && hours ? parseInt(hours, 10) : null,
+          mood: useMood ? mood.join(', ') : '',
+        }),
       });
       const data = await res.json();
       setBlocks((data.blocks || []).map((b: DayBlock) => ({ ...b, done: false })));
@@ -107,23 +106,31 @@ export default function HomePage() {
 
   if (!loaded) return <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spinner /></div>;
 
-  const MOODS = ['Focused', 'Tired', 'Anxious', 'Motivated', 'Busy', 'Calm'];
+  const hasPlan = blocks.length > 0;
 
   return (
     <div style={{ padding: 'max(20px, env(safe-area-inset-top)) 20px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ color: C.muted, fontSize: 14 }}>{greeting()},</div>
-          <div className="serif" style={{ fontSize: 28, fontWeight: 600 }}>{firstName || 'there'}</div>
-        </div>
-        <button onClick={cycleQuote}><Logo size={40} /></button>
-      </div>
+      <div style={{ color: C.muted, fontSize: 14 }}>{greeting()},</div>
+      <div className="serif" style={{ fontSize: 28, fontWeight: 600, marginBottom: 16 }}>{firstName || 'there'}</div>
 
-      {showQuote && (
-        <div className="fadein" key={quoteIdx} style={{ marginTop: 14, padding: '14px 16px', background: C.orangeSoft, borderRadius: 14, color: C.dark, fontSize: 14.5, fontStyle: 'italic', fontFamily: SERIF }}>
-          “{QUOTES[quoteIdx]}”
+      {/* Streak + motivation + logo block */}
+      <div style={{ background: C.dark, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16, color: '#fff' }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.faint }}>STREAK</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
+            <span className="serif" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1 }}>{streak}</span>
+            <span style={{ fontSize: 14, color: '#E8E2D6' }}>{streak === 1 ? 'day' : 'days'}</span>
+          </div>
+          <div style={{ marginTop: 10, fontSize: 13, color: '#E8E2D6', lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
+            &ldquo;{quote}&rdquo;
+          </div>
         </div>
-      )}
+        <button onClick={() => setQuote((q) => nextQuote(q))}
+          style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 16, background: C.orange, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          aria-label="New motivation">
+          <Logo size={32} />
+        </button>
+      </div>
 
       {/* Priorities */}
       <div style={{ marginTop: 24 }}>
@@ -153,48 +160,23 @@ export default function HomePage() {
         </Card>
       </div>
 
-      {/* AI Day Plan */}
+      {/* AI day plan — button opens options */}
       <div style={{ marginTop: 24 }}>
-        <SectionTitle>AI day plan</SectionTitle>
-        <Card>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div>
-              <Label>Energy</Label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {['Low', 'Medium', 'High'].map((e) => (
-                  <button key={e} onClick={() => setEnergy(e)} style={chip(energy === e)}>{e}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label>Hours available</Label>
-              <input value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 4" inputMode="numeric"
-                style={{ width: 90, padding: '10px 12px', borderRadius: 11, border: `1px solid ${C.border}`, fontSize: 16, outline: 'none' }} />
-            </div>
-            <div>
-              <Label>Mood</Label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                {MOODS.map((m) => (
-                  <button key={m} onClick={() => toggleMood(m)} style={chip(mood.includes(m))}>{m}</button>
-                ))}
-              </div>
-            </div>
-            <button onClick={generatePlan} disabled={planLoading}
-              style={{ marginTop: 4, padding: '13px', borderRadius: 13, background: planLoading ? C.faint : C.orange, color: '#fff', fontWeight: 600, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9 }}>
-              {planLoading && <Spinner size={17} color="#fff" />}
-              {blocks.length ? 'Regenerate plan' : 'Generate plan'}
-            </button>
-          </div>
-        </Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <SectionTitle noMargin>AI day plan</SectionTitle>
+          <button onClick={() => setSheet('options')}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, background: C.orange, color: '#fff', borderRadius: 12, padding: '9px 15px', fontWeight: 600, fontSize: 14 }}>
+            {planLoading ? <Spinner size={15} color="#fff" /> : <span style={{ fontSize: 16 }}>✦</span>}
+            {hasPlan ? 'Update' : 'Generate'}
+          </button>
+        </div>
 
         {advice && (
-          <div style={{ marginTop: 12, padding: '12px 14px', background: C.orangeSoft, borderRadius: 13, fontSize: 14, color: C.dark }}>
-            💡 {advice}
-          </div>
+          <div style={{ padding: '12px 14px', background: C.orangeSoft, borderRadius: 13, fontSize: 14, color: C.dark, marginBottom: 12 }}>💡 {advice}</div>
         )}
 
-        {blocks.length > 0 && (
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {hasPlan ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {blocks.map((b, i) => {
               const a = area(b.area);
               return (
@@ -213,6 +195,10 @@ export default function HomePage() {
               );
             })}
           </div>
+        ) : (
+          <button onClick={() => setSheet('options')} style={{ width: '100%', padding: '22px', borderRadius: 16, border: `1.5px dashed ${C.border}`, background: '#fff', color: C.muted, fontSize: 14 }}>
+            Tap to generate your time-blocked day from your goals.
+          </button>
         )}
 
         {deferred.length > 0 && (
@@ -229,19 +215,71 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* Options sheet */}
+      {sheet && (
+        <div onClick={() => setSheet(null)} className="fadein" style={{ position: 'absolute', inset: 0, zIndex: 100, background: 'rgba(26,24,21,0.4)', display: 'flex', alignItems: 'flex-end' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: '20px 20px max(24px, env(safe-area-inset-bottom))' }}>
+            <div style={{ width: 40, height: 4, background: C.sand, borderRadius: 3, margin: '0 auto 18px' }} />
+            {sheet === 'options' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Day plan</h2>
+                <OptBtn emoji="⚡" title="Quick generate" sub="Build from your goals, no extra input" onClick={() => generatePlan(false)} />
+                <OptBtn emoji="🎭" title="By mood & energy" sub="Tune it to how you feel today" onClick={() => setSheet('mood')} />
+                {hasPlan && <OptBtn emoji="🔄" title="Regenerate" sub="Replace today's plan" onClick={() => generatePlan(false)} />}
+              </div>
+            )}
+            {sheet === 'mood' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>Tune your plan</h2>
+                <div>
+                  <Label>Energy</Label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {['Low', 'Medium', 'High'].map((e) => (
+                      <button key={e} onClick={() => setEnergy(e)} style={chip(energy === e)}>{e}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <Label>Hours available</Label>
+                  <input value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, ''))} placeholder="e.g. 4" inputMode="numeric"
+                    style={{ width: 90, padding: '10px 12px', borderRadius: 11, border: `1px solid ${C.border}`, fontSize: 16, outline: 'none' }} />
+                </div>
+                <div>
+                  <Label>Mood</Label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                    {MOODS.map((m) => (<button key={m} onClick={() => toggleMood(m)} style={chip(mood.includes(m))}>{m}</button>))}
+                  </div>
+                </div>
+                <button onClick={() => generatePlan(true)} style={{ padding: '14px', borderRadius: 14, background: C.orange, color: '#fff', fontWeight: 600, fontSize: 15 }}>Generate plan</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, marginBottom: 10 }}>{children}</div>;
+function OptBtn({ emoji, title, sub, onClick }: { emoji: string; title: string; sub: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 13, textAlign: 'left', background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 16px' }}>
+      <span style={{ fontSize: 22 }}>{emoji}</span>
+      <span style={{ flex: 1 }}>
+        <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: C.dark }}>{title}</span>
+        <span style={{ display: 'block', fontSize: 12.5, color: C.muted, marginTop: 1 }}>{sub}</span>
+      </span>
+      <span style={{ color: C.faint, fontSize: 18 }}>›</span>
+    </button>
+  );
+}
+
+function SectionTitle({ children, noMargin }: { children: React.ReactNode; noMargin?: boolean }) {
+  return <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, marginBottom: noMargin ? 0 : 10 }}>{children}</div>;
 }
 function Label({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 12.5, fontWeight: 600, color: C.muted, marginBottom: 7 }}>{children}</div>;
 }
 function chip(active: boolean): React.CSSProperties {
-  return {
-    padding: '8px 14px', borderRadius: 10, fontSize: 13.5, fontWeight: 600,
-    background: active ? C.orange : C.sand, color: active ? '#fff' : C.muted,
-  };
+  return { padding: '8px 14px', borderRadius: 10, fontSize: 13.5, fontWeight: 600, background: active ? C.orange : C.sand, color: active ? '#fff' : C.muted };
 }

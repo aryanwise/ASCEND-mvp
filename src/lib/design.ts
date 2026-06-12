@@ -64,6 +64,21 @@ export function greeting(): string {
   return 'Good evening';
 }
 
+// Deterministic "quote of the day" — same all day, changes when the date changes.
+export function dailyQuote(): string {
+  const d = new Date();
+  const dayNum = Math.floor(d.getTime() / 86400000);
+  return QUOTES[dayNum % QUOTES.length];
+}
+
+// A different random quote (for tap-to-change), avoiding the one passed in.
+export function nextQuote(current: string): string {
+  if (QUOTES.length < 2) return QUOTES[0];
+  let q = current;
+  while (q === current) q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  return q;
+}
+
 export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
