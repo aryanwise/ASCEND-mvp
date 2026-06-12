@@ -12,15 +12,13 @@ export async function POST(req: NextRequest) {
     if (!userId || !date) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
 
     const db = supabaseAdmin();
-    const [profile, priorities, plan] = await Promise.all([
+    const [profile, plan] = await Promise.all([
       db.from('profiles').select('first_name').eq('id', userId).maybeSingle(),
-      db.from('priorities').select('*').eq('user_id', userId).eq('date', date).order('id'),
       db.from('day_plans').select('*').eq('user_id', userId).eq('date', date).maybeSingle(),
     ]);
 
     return NextResponse.json({
       firstName: profile.data?.first_name || '',
-      priorities: priorities.data || [],
       dayPlan: plan.data || null,
     });
   } catch (e) {
