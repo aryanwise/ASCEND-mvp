@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { waitForSession, isStandalone } from '@/lib/session';
 import { C } from '@/lib/design';
-import { FullLoader } from '@/components/ui';
+import { FullLoader, BodyPortal } from '@/components/ui';
 
 const TABS = [
   { key: 'home', label: 'Home', href: '/app' },
@@ -53,25 +53,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Lock the shell to the ACTUAL visible viewport. iOS PWAs don't reliably honor
-  // dvh/svh when the keyboard opens — the page scrolls and pushes the nav off
-  // screen. visualViewport reports the true visible height (shrinking when the
-  // keyboard appears), so we set it as a CSS var the shell uses for its height.
+  // Keep the window pinned to the top so focusing an input can't scroll the
+  // shell upward. We deliberately do NOT shrink the shell when the keyboard
+  // opens — shrinking made the bottom nav ride up on top of the keyboard.
+  // Instead the shell stays full height and iOS lays the keyboard over it.
   useEffect(() => {
-    const setVH = () => {
-      const h = window.visualViewport?.height ?? window.innerHeight;
-      document.documentElement.style.setProperty('--app-vh', `${h}px`);
-      // Keep the window pinned to top so the keyboard can't scroll the shell away.
-      window.scrollTo(0, 0);
-    };
-    setVH();
-    window.visualViewport?.addEventListener('resize', setVH);
-    window.visualViewport?.addEventListener('scroll', setVH);
-    window.addEventListener('resize', setVH);
+    const pin = () => window.scrollTo(0, 0);
+    pin();
+    window.visualViewport?.addEventListener('resize', pin);
+    window.visualViewport?.addEventListener('scroll', pin);
+    window.addEventListener('resize', pin);
     return () => {
-      window.visualViewport?.removeEventListener('resize', setVH);
-      window.visualViewport?.removeEventListener('scroll', setVH);
-      window.removeEventListener('resize', setVH);
+      window.visualViewport?.removeEventListener('resize', pin);
+      window.visualViewport?.removeEventListener('scroll', pin);
+      window.removeEventListener('resize', pin);
     };
   }, []);
 
@@ -129,20 +124,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="shell" style={{ touchAction: 'pan-y' }}>
-      <div className="scrollarea no-scrollbar" style={{ paddingBottom: 68 }}>{children}</div>
+      <div className="scrollarea no-scrollbar" style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}>{children}</div>
 
-      <div style={{
-        position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 50,
-        height: 'calc(56px + env(safe-area-inset-bottom))',
-        paddingBottom: 'env(safe-area-inset-bottom)',
-        background: 'rgba(248,245,239,0.94)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-        borderTop: `1px solid ${C.border}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-      }}>
-        {TABS.map((t) => (
-          <NavBtn key={t.key} label={t.label} active={activeKey === t.key} tabKey={t.key} onClick={() => go(t.href)} />
-        ))}
-      </div>
+      <BodyPortal>
+        <div style={{
+          position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 0, zIndex: 50,
+          width: '100%', maxWidth: 430,
+          height: 'calc(56px + env(safe-area-inset-bottom))',
+          paddingBottom: 'env(safe-area-inset-bottom)',
+          background: 'rgba(248,245,239,0.97)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+          borderTop: `1px solid ${C.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+        }}>
+          {TABS.map((t) => (
+            <NavBtn key={t.key} label={t.label} active={activeKey === t.key} tabKey={t.key} onClick={() => go(t.href)} />
+          ))}
+        </div>
+      </BodyPortal>
     </div>
   );
 }

@@ -40,11 +40,12 @@ body {
   position: relative;
   width: 100%;
   max-width: 430px;
-  /* JS sets --app-vh from window.visualViewport (tracks the keyboard on iOS).
-     Falls back to svh/dvh before the JS runs. */
+  /* Full viewport height. We do NOT shrink this when the keyboard opens — the
+     nav is portaled and fixed to the device bottom, so the keyboard just covers
+     it. svh keeps the shell stable when browser chrome shows/hides. */
   height: 100svh;
-  height: var(--app-vh, 100svh);
-  max-height: var(--app-vh, 100dvh);
+  height: 100dvh;
+  max-height: 100dvh;
   margin: 0 auto;
   background: var(--bg);
   display: flex;

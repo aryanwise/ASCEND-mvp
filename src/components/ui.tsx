@@ -112,7 +112,7 @@ export function BottomSheet({ onClose, children }: { onClose: () => void; childr
       <div onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 430,
-          maxHeight: 'calc(var(--app-vh, 100svh) - 40px)',
+          maxHeight: '90svh',
           display: 'flex', flexDirection: 'column',
           background: C.bg, borderTopLeftRadius: 26, borderTopRightRadius: 26,
           boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
@@ -127,4 +127,14 @@ export function BottomSheet({ onClose, children }: { onClose: () => void; childr
     </div>,
     document.body
   );
+}
+
+// Renders children via portal to document.body — used to anchor the bottom nav
+// to the true device viewport so the keyboard simply covers it (instead of the
+// nav floating up above the keyboard when the visual viewport shrinks).
+export function BodyPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  if (!mounted || typeof document === 'undefined') return null;
+  return ReactDOM.createPortal(children, document.body);
 }
