@@ -63,14 +63,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       document.documentElement.style.setProperty('--kb', `${inset}px`);
       window.scrollTo(0, 0);
     };
+
+    // iOS fires the resize event before the keyboard finishes animating, so a
+    // single read gives a stale (often 0) inset and the input doesn't move until
+    // the user scrolls. Sample several times across the animation to catch the
+    // final height immediately on focus.
+    const sampleBurst = () => {
+      update();
+      let n = 0;
+      const tick = () => {
+        update();
+        if (++n < 8) setTimeout(tick, 60); // ~0.5s of catching the animation
+      };
+      requestAnimationFrame(tick);
+    };
+
     update();
     vv?.addEventListener('resize', update);
     vv?.addEventListener('scroll', update);
     window.addEventListener('resize', update);
+    // When any input/textarea gains focus, run the burst so the lift is instant.
+    document.addEventListener('focusin', sampleBurst);
+    document.addEventListener('focusout', sampleBurst);
     return () => {
       vv?.removeEventListener('resize', update);
       vv?.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
+      document.removeEventListener('focusin', sampleBurst);
+      document.removeEventListener('focusout', sampleBurst);
     };
   }, []);
 

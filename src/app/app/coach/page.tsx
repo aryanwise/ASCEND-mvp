@@ -45,6 +45,13 @@ export default function CoachPage() {
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, sending]);
 
+  // Keep the latest message visible when the keyboard opens.
+  useEffect(() => {
+    const onFocus = () => setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 350);
+    document.addEventListener('focusin', onFocus);
+    return () => document.removeEventListener('focusin', onFocus);
+  }, []);
+
   async function loadSessions(id: string) {
     try {
       const res = await fetch('/api/coach-sessions', {
@@ -121,6 +128,7 @@ export default function CoachPage() {
       position: 'fixed', left: '50%', transform: 'translateX(-50%)', top: 0,
       width: '100%', maxWidth: 430,
       height: 'calc(100svh - var(--kb, 0px))',
+      transition: 'height 0.2s ease-out',
       display: 'flex', flexDirection: 'column',
       background: C.bg,
     }}>
