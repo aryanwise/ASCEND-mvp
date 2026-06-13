@@ -4,12 +4,24 @@ import ReactDOM from 'react-dom';
 import { C, SERIF } from '@/lib/design';
 
 export function Logo({ size = 38 }: { size?: number }) {
+  const radius = Math.round(size * 0.26);
   return (
-    <svg width={size} height={size} viewBox="0 0 38 38" fill="none">
-      <rect width="38" height="38" rx="10" fill="#C0392B" />
-      <path d="M10 28L19 10L28 28" stroke="#FBF9F4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M14.5 22H23.5" stroke="#FBF9F4" strokeWidth="2.5" strokeLinecap="round" />
-    </svg>
+    <span
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius,
+        background: '#C0392B',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        lineHeight: 1,
+      }}
+      aria-label="Ascend"
+    >
+      <span style={{ fontFamily: SERIF, fontSize: size * 0.62, color: '#FBF9F4', fontWeight: 500, lineHeight: 1, marginTop: -size * 0.03 }}>A</span>
+    </span>
   );
 }
 
