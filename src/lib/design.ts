@@ -1,8 +1,9 @@
 // Central design tokens + area config used across all screens.
 
 export const C = {
-  orange: '#DEAA6B',
-  onAccent: '#201E1A', // espresso text on caramel — readable, premium
+  orange: '#B5532A',
+  caramel: '#DEAA6B',
+  onAccent: '#FBF9F4', // cream text on the deep sienna accent
   orangeSoft: '#F7EFE0',
   dark: '#201E1A',
   bg: '#FBF9F4',

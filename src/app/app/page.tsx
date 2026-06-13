@@ -157,14 +157,14 @@ export default function HomePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted }}>AI day plan</div>
           <button onClick={() => setSheet('options')}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, flexShrink: 0, whiteSpace: 'nowrap', background: C.orange, color: C.dark, borderRadius: 12, padding: '10px 18px', fontWeight: 600, fontSize: 14 }}>
-            {planLoading ? <Spinner size={15} color={C.dark} /> : <span style={{ fontSize: 15 }}>✦</span>}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, flexShrink: 0, whiteSpace: 'nowrap', background: C.orange, color: C.onAccent, borderRadius: 12, padding: '10px 18px', fontWeight: 600, fontSize: 14 }}>
+            {planLoading ? <Spinner size={15} color={C.onAccent} /> : <span style={{ fontSize: 15 }}>✦</span>}
             <span>{hasPlan ? 'Update' : 'Generate'}</span>
           </button>
         </div>
 
         {advice && (
-          <div style={{ padding: '12px 14px', background: C.orangeSoft, borderRadius: 13, fontSize: 14, color: C.dark, marginBottom: 12 }}>💡 {advice}</div>
+          <div style={{ padding: '12px 14px', background: C.orangeSoft, borderRadius: 13, fontSize: 14, color: C.onAccent, marginBottom: 12 }}>💡 {advice}</div>
         )}
 
         {hasPlan ? (
@@ -248,7 +248,7 @@ export default function HomePage() {
                   {MOODS.map((m) => (<button key={m} onClick={() => toggleMood(m)} style={chip(mood.includes(m))}>{m}</button>))}
                 </div>
               </div>
-              <button onClick={() => generatePlan('tune')} style={{ padding: '14px', borderRadius: 14, background: C.orange, color: C.dark, fontWeight: 600, fontSize: 15 }}>Generate plan</button>
+              <button onClick={() => generatePlan('tune')} style={{ padding: '14px', borderRadius: 14, background: C.orange, color: C.onAccent, fontWeight: 600, fontSize: 15 }}>Generate plan</button>
             </div>
           )}
         </BottomSheet>

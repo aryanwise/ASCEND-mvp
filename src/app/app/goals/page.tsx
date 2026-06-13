@@ -52,7 +52,7 @@ export default function GoalsPage() {
     <div style={{ padding: 'max(20px, env(safe-area-inset-top)) 20px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <h1 className="serif" style={{ fontSize: 28, fontWeight: 600, margin: 0 }}>Goals</h1>
-        <button onClick={() => router.push('/app/goals/new')} style={{ background: C.orange, color: C.dark, borderRadius: 12, padding: '9px 16px', fontWeight: 600, fontSize: 14 }}>+ New</button>
+        <button onClick={() => router.push('/app/goals/new')} style={{ background: C.orange, color: C.onAccent, borderRadius: 12, padding: '9px 16px', fontWeight: 600, fontSize: 14 }}>+ New</button>
       </div>
 
       {active.length === 0 && paused.length === 0 && (
@@ -71,7 +71,7 @@ export default function GoalsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {paused.map((g) => (
               <div key={g.id} style={{ position: 'relative' }}>
-                <button onClick={(e) => unpause(g, e)} style={{ position: 'absolute', top: 10, right: 10, zIndex: 2, background: C.orange, color: C.dark, borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 600 }}>Unpause</button>
+                <button onClick={(e) => unpause(g, e)} style={{ position: 'absolute', top: 10, right: 10, zIndex: 2, background: C.orange, color: C.onAccent, borderRadius: 9, padding: '6px 12px', fontSize: 12.5, fontWeight: 600 }}>Unpause</button>
                 <div style={{ opacity: 0.55 }}><GoalCard goal={g} onClick={() => open(g)} /></div>
               </div>
             ))}

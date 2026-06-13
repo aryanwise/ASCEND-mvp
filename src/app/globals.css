@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --orange: #DEAA6B;
+  --orange: #B5532A;
+  --caramel: #DEAA6B;
   --orange-soft: #F7EFE0;
   --dark: #201E1A;
   --bg: #FBF9F4;

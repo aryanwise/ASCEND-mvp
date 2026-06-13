@@ -202,12 +202,12 @@ function RecalibratePanel({ userId, goal, onClose, onApplied }: { userId: string
         rows={2} placeholder="Or describe it in your own words…"
         style={{ width: '100%', marginTop: 10, padding: '11px 13px', borderRadius: 12, border: `1px solid ${C.border}`, fontSize: 16, outline: 'none' }} />
       <button onClick={getProposal} disabled={loading || (!reason && !custom.trim())}
-        style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, background: (reason || custom.trim()) ? C.orange : C.faint, color: C.dark, fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-        {loading && <Spinner size={16} color={C.dark} />}Get AI proposal
+        style={{ marginTop: 12, width: '100%', padding: '12px', borderRadius: 12, background: (reason || custom.trim()) ? C.orange : C.faint, color: C.onAccent, fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        {loading && <Spinner size={16} color={C.onAccent} />}Get AI proposal
       </button>
       {proposal && (
         <div className="fadein" style={{ marginTop: 14 }}>
-          <div style={{ padding: '14px 16px', background: C.orangeSoft, borderRadius: 14, fontSize: 14.5, color: C.dark, lineHeight: 1.5 }}>{proposal}</div>
+          <div style={{ padding: '14px 16px', background: C.orangeSoft, borderRadius: 14, fontSize: 14.5, color: C.onAccent, lineHeight: 1.5 }}>{proposal}</div>
           <div style={{ marginTop: 12 }}><PrimaryButton onClick={apply} loading={applying}>Apply this change</PrimaryButton></div>
         </div>
       )}
