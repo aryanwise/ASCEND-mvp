@@ -11,6 +11,7 @@ export async function groq(
 ): Promise<string> {
   const key = process.env.GROQ_API_KEY;
   if (!key) {
+    // Loud, specific failure instead of a silent empty response.
     throw new Error('GROQ_API_KEY is not set in this environment. Add it to .env.local (local) and Vercel → Settings → Environment Variables, then redeploy.');
   }
 
@@ -46,5 +47,21 @@ export function parseJSON<T>(raw: string, fallback: T): T {
     return JSON.parse(clean) as T;
   } catch {
     return fallback;
+  }
+}
+
+// Shared persona definitions. Every AI surface (coach, day-plan, recalibration,
+// notifications) injects the matching tone so the voice is consistent.
+export type Persona = 'drill_sergeant' | 'strategist' | 'balanced';
+
+export function personaTone(p: string | undefined): string {
+  switch (p) {
+    case 'drill_sergeant':
+      return 'TONE: Drill Sergeant. Blunt, intense, zero excuses. Short punchy sentences. Push hard, demand action, no coddling — but never cruel or abusive. You respect them enough to be direct.';
+    case 'strategist':
+      return 'TONE: Strategist. Calm, analytical, planning-focused. Frame things in terms of systems, tradeoffs, and the smart next move. Measured and precise, like a sharp consultant.';
+    case 'balanced':
+    default:
+      return 'TONE: Balanced. Supportive but honest. Warm and encouraging, yet willing to tell hard truths kindly. A great coach who has your back and still holds you accountable.';
   }
 }

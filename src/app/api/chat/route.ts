@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { groq, type GroqMsg } from '@/lib/groq';
+import { groq, personaTone, type GroqMsg } from '@/lib/groq';
 
 export const runtime = 'nodejs';
 export const maxDuration = 10;
@@ -28,9 +28,17 @@ export async function POST(req: NextRequest) {
       .map((m) => `- ${m.key}: ${JSON.stringify(m.value)}`)
       .join('\n') || '- (none yet)';
 
-    const system = `You are Ascend — a sharp, warm accountability coach, not a generic chatbot. You help the user actually follow through. Be direct, concise, and human. Challenge excuses kindly. Reference their goals and what you know about them. Never lecture in long paragraphs; keep replies tight.
+    const memMap: Record<string, unknown> = {};
+    (memory || []).forEach((m) => { memMap[m.key] = m.value; });
+    const persona = (memMap.persona as string) || 'balanced';
+    const averageDay = (memMap.average_day as string) || '';
+
+    const system = `You are Ascend — a sharp accountability coach, not a generic chatbot. You help the user actually follow through. Be concise and human. Challenge excuses. Reference their goals and what you know about them. Never lecture in long paragraphs; keep replies tight.
+
+${personaTone(persona)}
 
 USER: ${profile?.first_name || 'there'} (archetype: ${profile?.archetype || 'unknown'})
+${averageDay ? `THEIR TYPICAL DAY: ${averageDay}` : ''}
 
 ACTIVE GOALS:
 ${goalLines}

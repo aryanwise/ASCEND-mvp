@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { groq, parseJSON } from '@/lib/groq';
+import { groq, parseJSON, personaTone } from '@/lib/groq';
 
 export const runtime = 'nodejs';
 export const maxDuration = 10;
@@ -26,25 +26,31 @@ export async function POST(req: NextRequest) {
     }
 
     // propose
-    const { data: goal } = await db
-      .from('goals')
-      .select('title, area, duration, tasks(name, frequency, duration)')
-      .eq('id', goalId)
-      .single();
+    const [{ data: goal }, { data: memory }] = await Promise.all([
+      db.from('goals').select('title, area, duration, tasks(name, frequency, duration, consecutive_misses)').eq('id', goalId).single(),
+      db.from('user_memory').select('key, value').eq('user_id', userId).in('key', ['persona', 'average_day']),
+    ]);
 
-    const tlist = (goal as { tasks?: { name: string }[] })?.tasks || [];
-    const taskStr = tlist.map((t) => `- ${t.name}`).join('\n');
+    const memMap: Record<string, unknown> = {};
+    (memory || []).forEach((m) => { memMap[m.key] = m.value; });
+    const persona = (memMap.persona as string) || 'balanced';
+    const averageDay = (memMap.average_day as string) || '';
+
+    const tlist = (goal as { tasks?: { name: string; frequency?: string; consecutive_misses?: number }[] })?.tasks || [];
+    const taskStr = tlist.map((t) => `- ${t.name} (${t.frequency || ''}${(t.consecutive_misses || 0) >= 2 ? ', MISSED 2× in a row' : ''})`).join('\n');
+    const missedTask = tlist.find((t) => (t.consecutive_misses || 0) >= 2);
 
     const raw = await groq(
       [
         {
           role: 'system',
           content:
-            'You are Ascend recalibrating a stalled goal. The user kept missing tasks for the given reason. Propose a SPECIFIC, lighter, more realistic adjustment (reduce frequency, shorten duration, reschedule, or swap a task). Be concrete and encouraging, 2-3 sentences max. Return JSON: {"proposal":"..."}. No preamble.',
+            'You are Ascend running the Two-Strike Rule: the user missed the same task twice, so you stop and recalibrate — no guilt, just a real change. Look at WHY (the reason + their typical day) and propose a concrete, specific adjustment: move it to a better time, cut the frequency/duration, swap it, or pause it for the week. Offer it as a clear choice when natural. Be specific about times if their schedule suggests a better slot. 2-3 sentences max. Examples of the vibe: "Mornings aren\'t working — move this to evenings, or pause it for the week?" / "Three days a week is too much right now. Let\'s drop to two and rebuild." Return JSON: {"proposal":"..."}. No preamble.'
+            + `\n\n${personaTone(persona)}`,
         },
         {
           role: 'user',
-          content: `Goal: ${goal?.title} (${goal?.area})\nCurrent tasks:\n${taskStr}\nReason for missing: ${reason || 'unspecified'}`,
+          content: `Goal: ${goal?.title} (${goal?.area})\n${averageDay ? `Their typical day: ${averageDay}\n` : ''}Current tasks:\n${taskStr}\n${missedTask ? `The repeatedly-missed task: "${missedTask.name}"\n` : ''}Reason for missing: ${reason || 'unspecified'}`,
         },
       ],
       { json: true, temperature: 0.6, maxTokens: 350 }

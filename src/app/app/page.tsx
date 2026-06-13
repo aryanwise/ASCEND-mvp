@@ -1,6 +1,5 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { waitForSession } from '@/lib/session';
 import { C, SERIF, area, greeting, todayISO, dailyQuote, nextQuote } from '@/lib/design';
 import { Logo, Spinner, BottomSheet } from '@/components/ui';
@@ -91,7 +90,12 @@ export default function HomePage() {
   async function toggleBlock(i: number) {
     const updated = blocks.map((b, idx) => (idx === i ? { ...b, done: !b.done } : b));
     setBlocks(updated);
-    await supabase.from('day_plans').update({ blocks: updated }).eq('user_id', userId).eq('date', date);
+    try {
+      await fetch('/api/day-plan/toggle', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, date, blocks: updated }),
+      });
+    } catch { /* ignore — UI already updated */ }
   }
 
   if (!loaded) return <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spinner /></div>;
@@ -100,8 +104,19 @@ export default function HomePage() {
 
   return (
     <div style={{ padding: 'max(20px, env(safe-area-inset-top)) 20px 20px' }}>
-      <div style={{ color: C.muted, fontSize: 14 }}>{greeting()},</div>
-      <div className="serif" style={{ fontSize: 28, fontWeight: 600, marginBottom: 16 }}>{firstName || 'there'}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ color: C.muted, fontSize: 14 }}>{greeting()},</div>
+          <div className="serif" style={{ fontSize: 28, fontWeight: 600, marginBottom: 16 }}>{firstName || 'there'}</div>
+        </div>
+        <button onClick={() => (window.location.href = '/app/settings')} aria-label="Settings"
+          style={{ width: 40, height: 40, borderRadius: 12, background: '#fff', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+      </div>
 
       {/* Streak + motivation + logo block */}
       <div style={{ background: C.dark, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16, color: '#fff' }}>
