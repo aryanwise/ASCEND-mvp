@@ -47,6 +47,7 @@ export interface DayBlock {
   area: string;
   duration?: string;
   done?: boolean;
+  task_id?: string | null;
 }
 
 export interface DeferredItem { task: string; reason: string; }

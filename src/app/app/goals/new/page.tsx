@@ -96,7 +96,7 @@ export default function NewGoalPage() {
 
   function back() {
     setErr('');
-    if (stepIdx === 0) { window.location.href = '/app/goals'; return; }
+    if (stepIdx === 0) { window.history.length > 1 ? window.history.back() : (window.location.href = '/app/goals'); return; }
     setStepIdx(stepIdx - 1);
   }
 

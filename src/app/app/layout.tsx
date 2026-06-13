@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { waitForSession, isStandalone } from '@/lib/session';
 import { C } from '@/lib/design';
 import { FullLoader, BodyPortal } from '@/components/ui';
@@ -16,6 +16,7 @@ const TABS = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     (async () => {
@@ -137,7 +138,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!ready) return <FullLoader />;
 
-  const go = (href: string) => { window.location.href = href; };
+  // Client-side navigation between tabs — no full page reload, so switching is
+  // instant (the session race we used window.location for only affects auth
+  // events, not tab-to-tab nav where the session already exists).
+  const go = (href: string) => { router.push(href); };
   const activeKey =
     pathname === '/app' ? 'home'
     : pathname.startsWith('/app/goals') ? 'goals'

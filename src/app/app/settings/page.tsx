@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { waitForSession } from '@/lib/session';
 import { C, SERIF } from '@/lib/design';
 import { Spinner, PrimaryButton } from '@/components/ui';
@@ -11,6 +12,7 @@ const PERSONAS = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [userId, setUserId] = useState('');
   const [persona, setPersona] = useState('balanced');
   const [averageDay, setAverageDay] = useState('');
@@ -60,7 +62,7 @@ export default function SettingsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100svh - var(--kb, 0px))' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 'max(18px, env(safe-area-inset-top)) 18px 14px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-        <button onClick={() => (window.location.href = '/app')} style={{ color: C.muted, fontSize: 14, fontWeight: 600 }}>← Home</button>
+        <button onClick={() => router.push('/app')} style={{ color: C.muted, fontSize: 14, fontWeight: 600 }}>← Home</button>
         <h1 className="serif" style={{ fontSize: 20, fontWeight: 600, margin: 0, flex: 1, textAlign: 'center', paddingRight: 50 }}>Settings</h1>
       </div>
 

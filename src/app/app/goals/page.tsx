@@ -1,11 +1,13 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { waitForSession } from '@/lib/session';
 import { C, area } from '@/lib/design';
 import { Spinner } from '@/components/ui';
 import type { Goal } from '@/lib/types';
 
 export default function GoalsPage() {
+  const router = useRouter();
   const [userId, setUserId] = useState('');
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -40,7 +42,7 @@ export default function GoalsPage() {
     load(userId);
   }
 
-  const open = (g: Goal) => { window.location.href = `/app/goals/${g.id}`; };
+  const open = (g: Goal) => { router.push(`/app/goals/${g.id}`); };
   const active = goals.filter((g) => g.status === 'active');
   const paused = goals.filter((g) => g.status !== 'active');
 
@@ -50,7 +52,7 @@ export default function GoalsPage() {
     <div style={{ padding: 'max(20px, env(safe-area-inset-top)) 20px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <h1 className="serif" style={{ fontSize: 28, fontWeight: 600, margin: 0 }}>Goals</h1>
-        <button onClick={() => (window.location.href = '/app/goals/new')} style={{ background: C.orange, color: '#fff', borderRadius: 12, padding: '9px 16px', fontWeight: 600, fontSize: 14 }}>+ New</button>
+        <button onClick={() => router.push('/app/goals/new')} style={{ background: C.orange, color: '#fff', borderRadius: 12, padding: '9px 16px', fontWeight: 600, fontSize: 14 }}>+ New</button>
       </div>
 
       {active.length === 0 && paused.length === 0 && (

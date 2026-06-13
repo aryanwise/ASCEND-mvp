@@ -1,11 +1,13 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { waitForSession } from '@/lib/session';
 import { C, SERIF, area, greeting, todayISO, dailyQuote, nextQuote } from '@/lib/design';
 import { Logo, Spinner, BottomSheet } from '@/components/ui';
 import type { DayBlock, DeferredItem } from '@/lib/types';
 
 export default function HomePage() {
+  const router = useRouter();
   const [userId, setUserId] = useState('');
   const [firstName, setFirstName] = useState('');
   const [streak, setStreak] = useState(0);
@@ -88,14 +90,27 @@ export default function HomePage() {
   }
 
   async function toggleBlock(i: number) {
-    const updated = blocks.map((b, idx) => (idx === i ? { ...b, done: !b.done } : b));
+    const block = blocks[i];
+    const nowDone = !block.done;
+    const updated = blocks.map((b, idx) => (idx === i ? { ...b, done: nowDone } : b));
     setBlocks(updated);
+    // Persist the visual check on the plan.
     try {
       await fetch('/api/day-plan/toggle', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, date, blocks: updated }),
       });
     } catch { /* ignore — UI already updated */ }
+    // If this block came from a real goal task, record a proper check-in so goal
+    // completion %, the two-strike counter, and future plans all stay in sync.
+    if (block.task_id) {
+      try {
+        await fetch('/api/tasks/checkin', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, taskId: block.task_id, date, completed: nowDone }),
+        });
+      } catch { /* ignore */ }
+    }
   }
 
   if (!loaded) return <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spinner /></div>;
@@ -109,7 +124,7 @@ export default function HomePage() {
           <div style={{ color: C.muted, fontSize: 14 }}>{greeting()},</div>
           <div className="serif" style={{ fontSize: 28, fontWeight: 600, marginBottom: 16 }}>{firstName || 'there'}</div>
         </div>
-        <button onClick={() => (window.location.href = '/app/settings')} aria-label="Settings"
+        <button onClick={() => router.push('/app/settings')} aria-label="Settings"
           style={{ width: 40, height: 40, borderRadius: 12, background: '#fff', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

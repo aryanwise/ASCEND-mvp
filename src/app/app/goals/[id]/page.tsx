@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { waitForSession } from '@/lib/session';
 import { C, SERIF, area } from '@/lib/design';
 import { Spinner, PrimaryButton } from '@/components/ui';
@@ -9,6 +9,7 @@ import type { Goal, Task } from '@/lib/types';
 export default function GoalDetailPage() {
   const params = useParams();
   const goalId = String(params.id);
+  const router = useRouter();
   const [userId, setUserId] = useState('');
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -42,7 +43,7 @@ export default function GoalDetailPage() {
     return (
       <div style={{ padding: 30, textAlign: 'center' }}>
         <p style={{ color: C.muted }}>Goal not found.</p>
-        <button onClick={() => (window.location.href = '/app/goals')} style={{ color: C.orange, fontWeight: 600 }}>← Back to goals</button>
+        <button onClick={() => router.push('/app/goals')} style={{ color: C.orange, fontWeight: 600 }}>← Back to goals</button>
       </div>
     );
   }
@@ -69,7 +70,7 @@ export default function GoalDetailPage() {
     <div style={{ padding: 'max(16px, env(safe-area-inset-top)) 18px 24px' }}>
       {/* Top bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <button onClick={() => (window.location.href = '/app/goals')} style={{ color: C.muted, fontSize: 14, fontWeight: 600 }}>← Goals</button>
+        <button onClick={() => router.push('/app/goals')} style={{ color: C.muted, fontSize: 14, fontWeight: 600 }}>← Goals</button>
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={() => prev && (window.location.href = `/app/goals/${prev.id}`)} disabled={!prev}
             style={{ padding: '6px 12px', borderRadius: 9, background: prev ? C.sand : 'transparent', color: prev ? C.dark : C.faint, fontSize: 13, fontWeight: 600 }}>‹ Prev</button>
