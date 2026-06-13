@@ -164,7 +164,7 @@ export default function HomePage() {
         </div>
 
         {advice && (
-          <div style={{ padding: '12px 14px', background: C.orangeSoft, borderRadius: 13, fontSize: 14, color: C.onAccent, marginBottom: 12 }}>💡 {advice}</div>
+          <div style={{ padding: '12px 14px', background: C.orangeSoft, borderRadius: 13, fontSize: 14, color: C.dark, marginBottom: 12, lineHeight: 1.5 }}>💡 {advice}</div>
         )}
 
         {hasPlan ? (

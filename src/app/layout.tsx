@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: 'An AI cognitive partner for goal achievement.',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Ascend' },
-  icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
+  icons: { icon: '/icons/icon-192.png', apple: '/icons/apple-touch-icon.png' },
 };
 
 export const viewport: Viewport = {

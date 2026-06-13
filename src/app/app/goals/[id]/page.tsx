@@ -207,7 +207,7 @@ function RecalibratePanel({ userId, goal, onClose, onApplied }: { userId: string
       </button>
       {proposal && (
         <div className="fadein" style={{ marginTop: 14 }}>
-          <div style={{ padding: '14px 16px', background: C.orangeSoft, borderRadius: 14, fontSize: 14.5, color: C.onAccent, lineHeight: 1.5 }}>{proposal}</div>
+          <div style={{ padding: '14px 16px', background: C.orangeSoft, borderRadius: 14, fontSize: 14.5, color: C.dark, lineHeight: 1.5 }}>{proposal}</div>
           <div style={{ marginTop: 12 }}><PrimaryButton onClick={apply} loading={applying}>Apply this change</PrimaryButton></div>
         </div>
       )}
