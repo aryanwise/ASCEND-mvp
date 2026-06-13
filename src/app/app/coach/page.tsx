@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { waitForSession } from '@/lib/session';
 import { C, SERIF } from '@/lib/design';
-import { Logo } from '@/components/ui';
+import { Logo, BottomSheet } from '@/components/ui';
 import type { ChatMessage } from '@/lib/types';
 
 interface Session { session_id: string; session_title: string; }
@@ -31,6 +31,10 @@ export default function CoachPage() {
   const [sidebar, setSidebar] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [showCmds, setShowCmds] = useState(false);
+  const [inbox, setInbox] = useState<{ id: string; text: string; kind: string; created_at: string; read: boolean }[]>([]);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [inboxLoading, setInboxLoading] = useState(false);
+  const inboxUnread = inbox.filter((i) => !i.read).length;
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,6 +44,7 @@ export default function CoachPage() {
       setUserId(id);
       setSessionId(`s_${Date.now()}`);
       loadSessions(id);
+      loadInbox(id);
     });
   }, []);
 
@@ -82,6 +87,47 @@ export default function CoachPage() {
     setMessages([]);
     setSessionId(`s_${Date.now()}`);
     setSidebar(false);
+  }
+
+  async function loadInbox(id: string) {
+    try {
+      const res = await fetch('/api/inbox', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: id, action: 'list' }),
+      });
+      const data = await res.json();
+      setInbox(data.items || []);
+    } catch { /* ignore */ }
+  }
+
+  async function openInbox() {
+    setInboxOpen(true);
+    // Mark read so the dot clears.
+    if (inboxUnread > 0) {
+      setInbox((cur) => cur.map((i) => ({ ...i, read: true })));
+      fetch('/api/inbox', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'read' }),
+      }).catch(() => {});
+    }
+  }
+
+  async function generateInsights() {
+    if (!userId || inboxLoading) return;
+    setInboxLoading(true);
+    try {
+      const res = await fetch('/api/inbox', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'generate' }),
+      });
+      const data = await res.json();
+      setInbox((data.items || []).map((i: { read: boolean }) => ({ ...i, read: true })));
+      fetch('/api/inbox', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'read' }),
+      }).catch(() => {});
+    } catch { /* ignore */ }
+    setInboxLoading(false);
   }
 
   async function send(text?: string) {
@@ -139,7 +185,15 @@ export default function CoachPage() {
           <Logo size={26} />
           <span className="serif" style={{ fontSize: 19, fontWeight: 600 }}>Coach</span>
         </div>
-        <button onClick={newChat} style={{ fontSize: 14, fontWeight: 600, color: C.orange }}>+ New</button>
+        <button onClick={openInbox} aria-label="Inbox" style={{ position: 'relative', width: 38, height: 38, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dark }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+            <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+          </svg>
+          {inboxUnread > 0 && (
+            <span style={{ position: 'absolute', top: 5, right: 5, minWidth: 8, height: 8, borderRadius: 4, background: C.orange }} />
+          )}
+        </button>
       </div>
 
       {/* Messages */}
@@ -232,6 +286,43 @@ export default function CoachPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Inbox — AI observations & suggestions */}
+      {inboxOpen && (
+        <BottomSheet onClose={() => setInboxOpen(false)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>From your coach</h2>
+              <button onClick={generateInsights} disabled={inboxLoading}
+                style={{ fontSize: 13, fontWeight: 600, color: '#fff', background: C.orange, borderRadius: 10, padding: '8px 13px', whiteSpace: 'nowrap' }}>
+                {inboxLoading ? 'Thinking…' : '✦ Refresh'}
+              </button>
+            </div>
+
+            {inbox.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px 10px', color: C.muted }}>
+                <div style={{ fontSize: 30, marginBottom: 8 }}>📭</div>
+                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.dark }}>No messages yet</div>
+                <div style={{ fontSize: 13, marginTop: 4, lineHeight: 1.5 }}>Tap Refresh and your coach will look at your goals and recent activity, then share what it notices.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {inbox.map((item) => {
+                  const tag = item.kind === 'suggestion' ? { label: 'Suggestion', color: '#3D4D8A', soft: '#E8EBF8' }
+                    : item.kind === 'nudge' ? { label: 'Nudge', color: C.orange, soft: C.orangeSoft }
+                    : { label: 'Observation', color: '#1B7A5C', soft: '#D9F0E5' };
+                  return (
+                    <div key={item.id} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 15, padding: '14px 15px' }}>
+                      <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: tag.color, background: tag.soft, padding: '3px 9px', borderRadius: 7, marginBottom: 8 }}>{tag.label}</span>
+                      <div style={{ fontSize: 14.5, lineHeight: 1.5, color: C.dark }}>{item.text}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </BottomSheet>
       )}
     </div>
   );
