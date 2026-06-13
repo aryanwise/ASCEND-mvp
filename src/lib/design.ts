@@ -1,16 +1,17 @@
 // Central design tokens + area config used across all screens.
 
 export const C = {
-  orange: '#D9531E',
-  orangeSoft: '#FFE9DD',
-  dark: '#1A1815',
-  bg: '#F8F5EF',
-  muted: '#6B6359',
-  faint: '#A8A095',
-  border: 'rgba(26,24,21,0.08)',
+  orange: '#DEAA6B',
+  onAccent: '#201E1A', // espresso text on caramel — readable, premium
+  orangeSoft: '#F7EFE0',
+  dark: '#201E1A',
+  bg: '#FBF9F4',
+  muted: '#7A7366',
+  faint: '#A89F8E',
+  border: '#EFEAE0',
   card: '#ffffff',
-  sand: '#EBE5D6',
-  desk: '#E8E2D6',
+  sand: '#F2ECE0',
+  desk: '#EFE7D8',
 } as const;
 
 export const SERIF = 'Georgia, serif';
@@ -30,7 +31,7 @@ export const AREAS: Record<AreaKey, AreaDef> = {
   mind:    { key: 'mind',    label: 'Mind',    color: '#1B6B7A', soft: '#D9EEF0', emoji: '🧠' },
   money:   { key: 'money',   label: 'Money',   color: '#2E7D32', soft: '#D9F0DB', emoji: '💰' },
   health:  { key: 'health',  label: 'Health',  color: '#C62828', soft: '#FDDEDE', emoji: '❤️' },
-  habits:  { key: 'habits',  label: 'Habits',  color: '#D9531E', soft: '#FFE9DD', emoji: '✨' },
+  habits:  { key: 'habits',  label: 'Habits',  color: '#DEAA6B', soft: '#F7EFE0', emoji: '✨' },
   custom:  { key: 'custom',  label: 'Custom',  color: '#6B6359', soft: '#EBE5D6', emoji: '🎯' },
 };
 

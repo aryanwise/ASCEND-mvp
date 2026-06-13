@@ -6,9 +6,9 @@ import { C, SERIF } from '@/lib/design';
 export function Logo({ size = 38 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 38 38" fill="none">
-      <rect width="38" height="38" rx="10" fill="#D9531E" />
-      <path d="M10 28L19 10L28 28" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M14.5 22H23.5" stroke="#F8F5EF" strokeWidth="2.5" strokeLinecap="round" />
+      <rect width="38" height="38" rx="10" fill="#DEAA6B" />
+      <path d="M10 28L19 10L28 28" stroke="#FBF9F4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14.5 22H23.5" stroke="#FBF9F4" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -58,7 +58,7 @@ export function PrimaryButton({
         padding: '15px',
         borderRadius: 14,
         background: disabled || loading ? C.faint : C.orange,
-        color: '#fff',
+        color: C.dark,
         fontSize: 16,
         fontWeight: 600,
         display: 'flex',
@@ -69,7 +69,7 @@ export function PrimaryButton({
         ...style,
       }}
     >
-      {loading && <Spinner size={18} color="#fff" />}
+      {loading && <Spinner size={18} color={C.dark} />}
       {children}
     </button>
   );

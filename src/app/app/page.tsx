@@ -139,9 +139,9 @@ export default function HomePage() {
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.faint }}>STREAK</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
             <span className="serif" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1 }}>{streak}</span>
-            <span style={{ fontSize: 14, color: '#E8E2D6' }}>{streak === 1 ? 'day' : 'days'}</span>
+            <span style={{ fontSize: 14, color: '#D8CFBE' }}>{streak === 1 ? 'day' : 'days'}</span>
           </div>
-          <div style={{ marginTop: 10, fontSize: 13, color: '#E8E2D6', lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
+          <div style={{ marginTop: 10, fontSize: 13, color: '#D8CFBE', lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
             &ldquo;{quote}&rdquo;
           </div>
         </div>
@@ -157,8 +157,8 @@ export default function HomePage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted }}>AI day plan</div>
           <button onClick={() => setSheet('options')}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, flexShrink: 0, whiteSpace: 'nowrap', background: C.orange, color: '#fff', borderRadius: 12, padding: '10px 18px', fontWeight: 600, fontSize: 14 }}>
-            {planLoading ? <Spinner size={15} color="#fff" /> : <span style={{ fontSize: 15 }}>✦</span>}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, flexShrink: 0, whiteSpace: 'nowrap', background: C.orange, color: C.dark, borderRadius: 12, padding: '10px 18px', fontWeight: 600, fontSize: 14 }}>
+            {planLoading ? <Spinner size={15} color={C.dark} /> : <span style={{ fontSize: 15 }}>✦</span>}
             <span>{hasPlan ? 'Update' : 'Generate'}</span>
           </button>
         </div>
@@ -248,7 +248,7 @@ export default function HomePage() {
                   {MOODS.map((m) => (<button key={m} onClick={() => toggleMood(m)} style={chip(mood.includes(m))}>{m}</button>))}
                 </div>
               </div>
-              <button onClick={() => generatePlan('tune')} style={{ padding: '14px', borderRadius: 14, background: C.orange, color: '#fff', fontWeight: 600, fontSize: 15 }}>Generate plan</button>
+              <button onClick={() => generatePlan('tune')} style={{ padding: '14px', borderRadius: 14, background: C.orange, color: C.dark, fontWeight: 600, fontSize: 15 }}>Generate plan</button>
             </div>
           )}
         </BottomSheet>

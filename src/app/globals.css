@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 :root {
-  --orange: #D9531E;
-  --orange-soft: #FFE9DD;
-  --dark: #1A1815;
-  --bg: #F8F5EF;
-  --muted: #6B6359;
-  --faint: #A8A095;
-  --border: rgba(26, 24, 21, 0.08);
+  --orange: #DEAA6B;
+  --orange-soft: #F7EFE0;
+  --dark: #201E1A;
+  --bg: #FBF9F4;
+  --muted: #7A7366;
+  --faint: #A89F8E;
+  --border: #EFEAE0;
   --card: #ffffff;
-  --sand: #EBE5D6;
+  --sand: #F2ECE0;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -19,7 +19,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: #E8E2D6;
+  background: #EFE7D8;
   color: var(--dark);
   font-family: -apple-system, 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;

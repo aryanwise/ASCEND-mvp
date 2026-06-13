@@ -266,7 +266,7 @@ export default function CoachPage() {
           rows={1} placeholder="Message your coach…"
           style={{ flex: 1, padding: '12px 14px', borderRadius: 16, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none', maxHeight: 110 }} />
         <button onClick={() => send()} disabled={!input.trim() || sending}
-          style={{ width: 44, height: 44, borderRadius: '50%', background: input.trim() ? C.orange : C.faint, color: '#fff', fontSize: 19, flexShrink: 0 }}>↑</button>
+          style={{ width: 44, height: 44, borderRadius: '50%', background: input.trim() ? C.orange : C.faint, color: C.dark, fontSize: 19, flexShrink: 0 }}>↑</button>
       </div>
 
       {/* Sidebar */}
@@ -274,7 +274,7 @@ export default function CoachPage() {
         <div onClick={() => setSidebar(false)} className="fadein" style={{ position: 'absolute', inset: 0, zIndex: 80, background: 'rgba(26,24,21,0.4)' }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 280, height: '100%', background: C.bg, padding: 'max(20px, env(safe-area-inset-top)) 18px 20px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, marginBottom: 16 }}>History</div>
-            <button onClick={newChat} style={{ background: C.orange, color: '#fff', borderRadius: 12, padding: '11px', fontWeight: 600, marginBottom: 14 }}>+ New conversation</button>
+            <button onClick={newChat} style={{ background: C.orange, color: C.dark, borderRadius: 12, padding: '11px', fontWeight: 600, marginBottom: 14 }}>+ New conversation</button>
             <div className="scrollarea no-scrollbar" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {sessions.length === 0 && <div style={{ color: C.faint, fontSize: 13.5 }}>No past conversations.</div>}
               {sessions.map((s) => (
@@ -295,7 +295,7 @@ export default function CoachPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h2 className="serif" style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>From your coach</h2>
               <button onClick={generateInsights} disabled={inboxLoading}
-                style={{ fontSize: 13, fontWeight: 600, color: '#fff', background: C.orange, borderRadius: 10, padding: '8px 13px', whiteSpace: 'nowrap' }}>
+                style={{ fontSize: 13, fontWeight: 600, color: C.dark, background: C.orange, borderRadius: 10, padding: '8px 13px', whiteSpace: 'nowrap' }}>
                 {inboxLoading ? 'Thinking…' : '✦ Refresh'}
               </button>
             </div>

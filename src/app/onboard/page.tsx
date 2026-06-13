@@ -238,7 +238,7 @@ export default function OnboardPage() {
                   rows={1} placeholder="Type your reply…"
                   style={{ flex: 1, padding: '12px 14px', borderRadius: 16, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none', maxHeight: 110 }} />
                 <button onClick={sendChat} disabled={!chatInput.trim() || thinking}
-                  style={{ width: 44, height: 44, borderRadius: '50%', background: chatInput.trim() ? C.orange : C.faint, color: '#fff', fontSize: 19, flexShrink: 0 }}>↑</button>
+                  style={{ width: 44, height: 44, borderRadius: '50%', background: chatInput.trim() ? C.orange : C.faint, color: C.dark, fontSize: 19, flexShrink: 0 }}>↑</button>
               </div>
             )}
           </div>
