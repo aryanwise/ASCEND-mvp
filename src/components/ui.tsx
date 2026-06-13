@@ -6,7 +6,7 @@ import { C, SERIF } from '@/lib/design';
 export function Logo({ size = 38 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 38 38" fill="none">
-      <rect width="38" height="38" rx="10" fill="#B5532A" />
+      <rect width="38" height="38" rx="10" fill="#C2622D" />
       <path d="M10 28L19 10L28 28" stroke="#FBF9F4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M14.5 22H23.5" stroke="#FBF9F4" strokeWidth="2.5" strokeLinecap="round" />
     </svg>
