@@ -17,6 +17,10 @@
   --desk: #E4E1D8;
   --ink: #201E1A;          /* always-dark surface (streak card) */
   --on-ink: #F2EDE4;       /* text on the always-dark surface */
+  --card-raised: #FFFFFF;  /* streak/elevated card surface */
+  --card-border: #E7E4DC;  /* its border */
+  --accent-text: #5A1022;  /* burgundy text/label readable on card */
+  --quote: #7A7366;        /* streak quote text */
 }
 
 [data-theme="dark"] {
@@ -34,6 +38,10 @@
   --desk: #100E0C;
   --ink: #2A130F;          /* streak card in dark mode — warm dark, distinct from canvas */
   --on-ink: #F2EDE4;
+  --card-raised: #262019;  /* elevated charcoal card (streak) */
+  --card-border: #3A322A;
+  --accent-text: #C77F8E;  /* lighter burgundy readable on dark card */
+  --quote: #A89F92;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }

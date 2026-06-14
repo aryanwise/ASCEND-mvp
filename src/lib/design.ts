@@ -15,6 +15,10 @@ export const C = {
   desk: 'var(--desk)',
   ink: 'var(--ink)',
   onInk: 'var(--on-ink)',
+  cardRaised: 'var(--card-raised)',
+  cardBorder: 'var(--card-border)',
+  accentText: 'var(--accent-text)',
+  quote: 'var(--quote)',
 } as const;
 
 export const SERIF = 'Georgia, serif';

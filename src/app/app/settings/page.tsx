@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState('');
   const [persona, setPersona] = useState('balanced');
   const [averageDay, setAverageDay] = useState('');
-  const [theme, setTheme] = useState<ThemePref>('system');
+  const [theme, setTheme] = useState<ThemePref>('light');
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -101,7 +101,7 @@ export default function SettingsPage() {
         {/* Appearance */}
         <div style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, marginBottom: 10 }}>Appearance</div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
-          {([['light', 'Light', '☀️'], ['dark', 'Dark', '🌙'], ['system', 'System', '⚙️']] as [ThemePref, string, string][]).map(([key, label, icon]) => (
+          {([['light', 'Light', '☀️'], ['dark', 'Dark', '🌙']] as [ThemePref, string, string][]).map(([key, label, icon]) => (
             <button key={key} onClick={() => pickTheme(key)}
               style={{
                 flex: 1, padding: '14px 8px', borderRadius: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,

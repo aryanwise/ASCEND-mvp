@@ -30,10 +30,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               (function () {
                 try {
                   var m = document.cookie.match(/(?:^|; )ascend-theme=([^;]+)/);
-                  var pref = m ? decodeURIComponent(m[1]) : 'system';
-                  var dark = pref === 'dark' || (pref === 'system' &&
-                    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+                  var pref = m ? decodeURIComponent(m[1]) : 'light';
+                  document.documentElement.setAttribute('data-theme', pref === 'dark' ? 'dark' : 'light');
                 } catch (e) {
                   document.documentElement.setAttribute('data-theme', 'light');
                 }

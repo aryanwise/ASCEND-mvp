@@ -133,22 +133,20 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Streak + motivation + logo block */}
-      <div style={{ background: C.ink, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16, color: C.onInk }}>
+      {/* Streak — elevated card, burgundy accents, logo as its own tile */}
+      <div style={{ background: C.cardRaised, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.faint }}>STREAK</div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.accentText }}>STREAK</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-            <span className="serif" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1 }}>{streak}</span>
-            <span style={{ fontSize: 14, color: C.onInk, opacity: 0.8 }}>{streak === 1 ? 'day' : 'days'}</span>
+            <span className="serif" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1, color: C.dark }}>{streak}</span>
+            <span style={{ fontSize: 14, color: C.muted }}>{streak === 1 ? 'day' : 'days'}</span>
           </div>
-          <div style={{ marginTop: 10, fontSize: 13, color: C.onInk, opacity: 0.8, lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
+          <div style={{ marginTop: 10, fontSize: 13, color: C.quote, lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
             &ldquo;{quote}&rdquo;
           </div>
         </div>
-        <button onClick={() => setQuote((q) => nextQuote(q))}
-          style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 16, background: C.orange, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          aria-label="New motivation">
-          <Logo size={32} />
+        <button onClick={() => setQuote((q) => nextQuote(q))} style={{ flexShrink: 0 }} aria-label="New motivation">
+          <Logo size={56} />
         </button>
       </div>
 
