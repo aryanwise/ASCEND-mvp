@@ -3,7 +3,7 @@
 export const C = {
   orange: '#5A1022',
   caramel: '#DEAA6B',
-  onAccent: '#F3ECE2', // warm ivory text on burgundy // cream text on the deep sienna accent
+  onAccent: '#FFFFFF', // pure white text on burgundy // cream text on the deep sienna accent
   orangeSoft: '#F7EFE0',
   dark: '#201E1A',
   bg: '#FBF9F4',
