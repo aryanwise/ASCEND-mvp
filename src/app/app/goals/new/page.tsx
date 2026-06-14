@@ -210,7 +210,7 @@ export default function NewGoalPage() {
         {err && <div style={{ color: '#C62828', fontSize: 13.5, marginTop: 10 }}>{err}</div>}
       </div>
 
-      <div style={{ padding: '12px 24px', display: 'flex', gap: 10, borderTop: `1px solid ${C.border}`, flexShrink: 0, marginBottom: 'max(0px, calc(56px + env(safe-area-inset-bottom) - var(--kb, 0px)))' }}>
+      <div style={{ padding: '12px 24px', display: 'flex', gap: 10, borderTop: `1px solid ${C.border}`, flexShrink: 0, marginBottom: 'max(0px, calc(84px + env(safe-area-inset-bottom) - var(--kb, 0px)))' }}>
         <button onClick={back} style={{ padding: '15px 22px', borderRadius: 14, background: C.sand, color: C.dark, fontWeight: 600 }}>Back</button>
         <div style={{ flex: 1 }}>
           <PrimaryButton onClick={next} loading={busy || (step === 'conversation' && thinking && turns.length === 0)}>

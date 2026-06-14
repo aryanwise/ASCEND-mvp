@@ -74,7 +74,7 @@ export default function SettingsPage() {
         <h1 className="serif" style={{ fontSize: 20, fontWeight: 600, margin: 0, flex: 1, textAlign: 'center', paddingRight: 50 }}>Settings</h1>
       </div>
 
-      <div className="scrollarea no-scrollbar" style={{ flex: 1, minHeight: 0, padding: 20, paddingBottom: 'calc(56px + env(safe-area-inset-bottom) + 20px)' }}>
+      <div className="scrollarea no-scrollbar" style={{ flex: 1, minHeight: 0, padding: 20, paddingBottom: 'calc(84px + env(safe-area-inset-bottom) + 20px)' }}>
         {/* Persona */}
         <div style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, marginBottom: 6 }}>Adaptive voice</div>
         <p style={{ fontSize: 13.5, color: C.muted, margin: '0 0 14px', lineHeight: 1.5 }}>

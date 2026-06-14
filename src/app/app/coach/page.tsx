@@ -256,7 +256,7 @@ export default function CoachPage() {
           marginBottom clears the fixed bottom nav when the keyboard is closed. */}
       <div style={{
         padding: '10px 14px 10px',
-        marginBottom: 'max(0px, calc(56px + env(safe-area-inset-bottom) - var(--kb, 0px)))',
+        marginBottom: 'max(0px, calc(84px + env(safe-area-inset-bottom) - var(--kb, 0px)))',
         borderTop: `1px solid ${C.border}`, background: C.bg,
         display: 'flex', gap: 9, alignItems: 'flex-end',
         flexShrink: 0,

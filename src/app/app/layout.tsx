@@ -159,38 +159,57 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="shell" style={{ touchAction: 'pan-y' }}>
-      <div className="scrollarea no-scrollbar" style={{ paddingBottom: 'calc(56px + env(safe-area-inset-bottom))' }}>{children}</div>
+      <div className="scrollarea no-scrollbar" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>{children}</div>
 
       <BodyPortal>
+        {/* Transparent backing — the pill floats above it; content shows through */}
         <div style={{
           position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 0, zIndex: 50,
           width: '100%', maxWidth: 430,
-          height: 'calc(56px + env(safe-area-inset-bottom))',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          background: C.bg, borderTop: `1px solid ${C.border}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)',
+          paddingTop: 14,
+          display: 'flex', justifyContent: 'center',
+          background: 'transparent',
+          pointerEvents: 'none',
         }}>
-          {TABS.map((t) => (
-            <NavBtn key={t.key} label={t.label} active={activeKey === t.key} tabKey={t.key} onClick={() => go(t.href)} />
-          ))}
+          {/* Solid floating pill */}
+          <div style={{
+            pointerEvents: 'auto',
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '8px 12px',
+            background: C.card,
+            borderRadius: 999,
+            border: `1px solid ${C.border}`,
+            boxShadow: '0 8px 30px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)',
+          }}>
+            {TABS.map((t) => (
+              <NavBtn key={t.key} active={activeKey === t.key} tabKey={t.key} onClick={() => go(t.href)} />
+            ))}
+          </div>
         </div>
       </BodyPortal>
     </div>
   );
 }
 
-function NavBtn({ label, active, tabKey, onClick }: { label: string; active: boolean; tabKey: string; onClick: () => void }) {
+function NavBtn({ active, tabKey, onClick }: { active: boolean; tabKey: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flex: 1, padding: '6px 0' }}>
+    <button onClick={onClick} aria-label={tabKey}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 52, height: 44, borderRadius: 999,
+        background: active ? C.orange : 'transparent',
+        transition: 'background 0.18s ease',
+      }}>
       <Icon name={tabKey} active={active} />
-      <span style={{ fontSize: 10.5, fontWeight: 600, color: active ? C.orange : C.faint }}>{label}</span>
     </button>
   );
 }
 
 function Icon({ name, active }: { name: string; active: boolean }) {
-  const col = active ? C.orange : C.faint;
-  const common = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: col, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  // Active icon = bold cream on the accent pill; inactive = solid muted-dark.
+  const col = active ? C.onAccent : C.dark;
+  const common = { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: col, strokeWidth: active ? 2.3 : 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   switch (name) {
     case 'home':
       return (<svg {...common}><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V20h14V9.5" /></svg>);
