@@ -1,18 +1,20 @@
 // Central design tokens + area config used across all screens.
 
 export const C = {
-  orange: '#5A1022',
-  caramel: '#DEAA6B',
-  onAccent: '#FFFFFF', // pure white text on burgundy // cream text on the deep sienna accent
-  orangeSoft: '#F7EFE0',
-  dark: '#201E1A',
-  bg: '#FBF9F4',
-  muted: '#7A7366',
-  faint: '#A89F8E',
-  border: '#EFEAE0',
-  card: '#ffffff',
-  sand: '#F2ECE0',
-  desk: '#EFE7D8',
+  orange: 'var(--orange)',
+  caramel: 'var(--caramel)',
+  onAccent: 'var(--on-accent)',
+  orangeSoft: 'var(--orange-soft)',
+  dark: 'var(--dark)',
+  bg: 'var(--bg)',
+  muted: 'var(--muted)',
+  faint: 'var(--faint)',
+  border: 'var(--border)',
+  card: 'var(--card)',
+  sand: 'var(--sand)',
+  desk: 'var(--desk)',
+  ink: 'var(--ink)',
+  onInk: 'var(--on-ink)',
 } as const;
 
 export const SERIF = 'Georgia, serif';

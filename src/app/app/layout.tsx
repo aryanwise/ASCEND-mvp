@@ -18,6 +18,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
+  // Keep the theme live if the OS flips while the app is open (system mode).
+  useEffect(() => {
+    let cleanup = () => {};
+    import('@/lib/theme').then((m) => { cleanup = m.watchSystemTheme(); });
+    return () => cleanup();
+  }, []);
+
   useEffect(() => {
     (async () => {
       const session = await waitForSession();
@@ -160,8 +167,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           width: '100%', maxWidth: 430,
           height: 'calc(56px + env(safe-area-inset-bottom))',
           paddingBottom: 'env(safe-area-inset-bottom)',
-          background: 'rgba(248,245,239,0.97)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-          borderTop: `1px solid ${C.border}`,
+          background: C.bg, borderTop: `1px solid ${C.border}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-around',
         }}>
           {TABS.map((t) => (

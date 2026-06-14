@@ -83,7 +83,7 @@ export default function InsightsPage() {
       </div>
 
       <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.muted, marginBottom: 12 }}>Last 7 days</div>
-      <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18 }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 6, height: 120 }}>
           {week.map((d) => (
             <div key={d.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, height: '100%', justifyContent: 'flex-end' }}>
@@ -107,7 +107,7 @@ export default function InsightsPage() {
               const a = area(g.area);
               const h = health(g.completion_pct);
               return (
-                <div key={g.id} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
+                <div key={g.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
                     <span style={{ fontSize: 14.5, fontWeight: 600 }}>{a.emoji} {g.title}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: h.color }}>{h.label}</span>

@@ -58,7 +58,7 @@ export default function ReflectPage() {
       </div>
 
       <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} placeholder="Anything else on your mind…"
-        style={{ width: '100%', marginTop: 18, padding: '14px 15px', borderRadius: 14, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none' }} />
+        style={{ width: '100%', marginTop: 18, padding: '14px 15px', borderRadius: 14, border: `1px solid ${C.border}`, background: C.card, fontSize: 16, outline: 'none' }} />
 
       <div style={{ marginTop: 16 }}>
         <PrimaryButton onClick={submit} loading={loading} disabled={selected.length === 0 && !note.trim()}>Get honest insight</PrimaryButton>

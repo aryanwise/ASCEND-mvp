@@ -2,17 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root, [data-theme="light"] {
   --orange: #5A1022;
+  --on-accent: #FFFFFF;
   --caramel: #DEAA6B;
-  --orange-soft: #F7EFE0;
+  --orange-soft: #F1E9DA;
   --dark: #201E1A;
-  --bg: #FBF9F4;
+  --bg: #F7F6F3;
   --muted: #7A7366;
   --faint: #A89F8E;
-  --border: #EFEAE0;
-  --card: #ffffff;
-  --sand: #F2ECE0;
+  --border: #E7E4DC;
+  --card: #FFFFFF;
+  --sand: #ECEAE3;
+  --desk: #E4E1D8;
+  --ink: #201E1A;          /* always-dark surface (streak card) */
+  --on-ink: #F2EDE4;       /* text on the always-dark surface */
+}
+
+[data-theme="dark"] {
+  --orange: #7A1A2F;        /* brighter burgundy so it shows on dark */
+  --on-accent: #FFFFFF;
+  --caramel: #E0B57C;
+  --orange-soft: #2A1F1C;   /* deep tint for advice/alert headers */
+  --dark: #F2EDE4;          /* "dark" token = primary TEXT, so it's light here */
+  --bg: #1A1714;            /* warm charcoal canvas */
+  --muted: #9A9182;
+  --faint: #6E665B;
+  --border: #2E2925;
+  --card: #232019;          /* card surfaces sit just above the canvas */
+  --sand: #2A2620;
+  --desk: #100E0C;
+  --ink: #2A130F;          /* streak card in dark mode — warm dark, distinct from canvas */
+  --on-ink: #F2EDE4;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }

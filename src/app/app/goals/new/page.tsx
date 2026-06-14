@@ -175,7 +175,7 @@ export default function NewGoalPage() {
               ))}
               {thinking && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                  <div style={{ padding: '13px 17px', background: '#fff', border: `1px solid ${C.border}`, borderRadius: 18, borderBottomLeftRadius: 5, display: 'flex', gap: 5 }}>
+                  <div style={{ padding: '13px 17px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, borderBottomLeftRadius: 5, display: 'flex', gap: 5 }}>
                     {[0, 1, 2].map((d) => (<span key={d} className="dot" style={{ width: 7, height: 7, borderRadius: '50%', background: C.faint }} />))}
                   </div>
                 </div>
@@ -192,7 +192,7 @@ export default function NewGoalPage() {
                 <textarea value={chatInput} onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
                   rows={1} placeholder="Type your reply…"
-                  style={{ flex: 1, padding: '12px 14px', borderRadius: 16, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none', maxHeight: 110 }} />
+                  style={{ flex: 1, padding: '12px 14px', borderRadius: 16, border: `1px solid ${C.border}`, background: C.card, fontSize: 16, outline: 'none', maxHeight: 110 }} />
                 <button onClick={sendChat} disabled={!chatInput.trim() || thinking}
                   style={{ width: 44, height: 44, borderRadius: '50%', background: chatInput.trim() ? C.orange : C.faint, color: C.onAccent, fontSize: 19, flexShrink: 0 }}>↑</button>
               </div>
@@ -235,5 +235,5 @@ function Section({ title, subtitle, children }: { title: string; subtitle: strin
 
 const inp: React.CSSProperties = {
   width: '100%', padding: '14px 15px', borderRadius: 13,
-  border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none',
+  border: `1px solid ${C.border}`, background: C.card, fontSize: 16, outline: 'none',
 };

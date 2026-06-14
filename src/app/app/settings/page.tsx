@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { waitForSession } from '@/lib/session';
 import { C, SERIF } from '@/lib/design';
 import { Spinner, PrimaryButton } from '@/components/ui';
+import { getThemePref, setThemePref, type ThemePref } from '@/lib/theme';
 
 const PERSONAS = [
   { key: 'balanced', emoji: '⚖️', title: 'Balanced', desc: 'Supportive but honest. Has your back, still holds you accountable.' },
@@ -16,6 +17,7 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState('');
   const [persona, setPersona] = useState('balanced');
   const [averageDay, setAverageDay] = useState('');
+  const [theme, setTheme] = useState<ThemePref>('system');
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -36,7 +38,13 @@ export default function SettingsPage() {
       } catch { /* ignore */ }
       setLoaded(true);
     });
+    setTheme(getThemePref());
   }, []);
+
+  function pickTheme(t: ThemePref) {
+    setTheme(t);
+    setThemePref(t);
+  }
 
   async function save() {
     setSaving(true); setSaved(false);
@@ -90,6 +98,22 @@ export default function SettingsPage() {
           ))}
         </div>
 
+        {/* Appearance */}
+        <div style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, marginBottom: 10 }}>Appearance</div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
+          {([['light', 'Light', '☀️'], ['dark', 'Dark', '🌙'], ['system', 'System', '⚙️']] as [ThemePref, string, string][]).map(([key, label, icon]) => (
+            <button key={key} onClick={() => pickTheme(key)}
+              style={{
+                flex: 1, padding: '14px 8px', borderRadius: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                background: theme === key ? C.orangeSoft : C.card,
+                border: `1.5px solid ${theme === key ? C.orange : C.border}`,
+              }}>
+              <span style={{ fontSize: 20 }}>{icon}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: theme === key ? C.orange : C.muted }}>{label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Average day */}
         <div style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, marginBottom: 6 }}>Your average day</div>
         <p style={{ fontSize: 13.5, color: C.muted, margin: '0 0 12px', lineHeight: 1.5 }}>
@@ -97,7 +121,7 @@ export default function SettingsPage() {
         </p>
         <textarea value={averageDay} onChange={(e) => setAverageDay(e.target.value)} rows={5}
           placeholder="e.g. Classes 9am–3pm weekdays, gym is free after 6pm, weekends are open. I'm useless before coffee and most focused at night."
-          style={{ width: '100%', padding: '14px 15px', borderRadius: 14, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none' }} />
+          style={{ width: '100%', padding: '14px 15px', borderRadius: 14, border: `1px solid ${C.border}`, background: C.card, fontSize: 16, outline: 'none' }} />
 
         <div style={{ marginTop: 20 }}>
           <PrimaryButton onClick={save} loading={saving}>{saved ? 'Saved ✓' : 'Save settings'}</PrimaryButton>

@@ -125,7 +125,7 @@ export default function HomePage() {
           <div className="serif" style={{ fontSize: 28, fontWeight: 600, marginBottom: 16 }}>{firstName || 'there'}</div>
         </div>
         <button onClick={() => router.push('/app/settings')} aria-label="Settings"
-          style={{ width: 40, height: 40, borderRadius: 12, background: '#fff', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          style={{ width: 40, height: 40, borderRadius: 12, background: C.card, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -134,14 +134,14 @@ export default function HomePage() {
       </div>
 
       {/* Streak + motivation + logo block */}
-      <div style={{ background: C.dark, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16, color: '#fff' }}>
+      <div style={{ background: C.ink, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16, color: C.onInk }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.faint }}>STREAK</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
             <span className="serif" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1 }}>{streak}</span>
-            <span style={{ fontSize: 14, color: '#D8CFBE' }}>{streak === 1 ? 'day' : 'days'}</span>
+            <span style={{ fontSize: 14, color: C.onInk, opacity: 0.8 }}>{streak === 1 ? 'day' : 'days'}</span>
           </div>
-          <div style={{ marginTop: 10, fontSize: 13, color: '#D8CFBE', lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
+          <div style={{ marginTop: 10, fontSize: 13, color: C.onInk, opacity: 0.8, lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
             &ldquo;{quote}&rdquo;
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function HomePage() {
             {blocks.map((b, i) => {
               const a = area(b.area);
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, padding: '12px 14px' }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '12px 14px' }}>
                   <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 4, background: a.color }} />
                   <div style={{ width: 66, flexShrink: 0, fontSize: 12.5, fontWeight: 600, color: C.muted }}>{b.time}</div>
                   <div style={{ flex: 1 }}>
@@ -188,7 +188,7 @@ export default function HomePage() {
             })}
           </div>
         ) : (
-          <button onClick={() => setSheet('options')} style={{ width: '100%', padding: '22px', borderRadius: 16, border: `1.5px dashed ${C.border}`, background: '#fff', color: C.muted, fontSize: 14 }}>
+          <button onClick={() => setSheet('options')} style={{ width: '100%', padding: '22px', borderRadius: 16, border: `1.5px dashed ${C.border}`, background: C.card, color: C.muted, fontSize: 14 }}>
             Tap to generate your time-blocked day from your goals.
           </button>
         )}
@@ -226,7 +226,7 @@ export default function HomePage() {
                 <Label>Anything specific for today?</Label>
                 <textarea value={todayNote} onChange={(e) => setTodayNote(e.target.value)} rows={3}
                   placeholder="e.g. Doctor's appt at 3pm, must finish the report, keep it light — feeling drained"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 13, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none' }} />
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 13, border: `1px solid ${C.border}`, background: C.card, fontSize: 16, outline: 'none' }} />
               </div>
 
               <div>
@@ -259,7 +259,7 @@ export default function HomePage() {
 
 function OptBtn({ emoji, title, sub, onClick }: { emoji: string; title: string; sub: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 13, textAlign: 'left', background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 16px' }}>
+    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 13, textAlign: 'left', background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: '14px 16px' }}>
       <span style={{ fontSize: 22 }}>{emoji}</span>
       <span style={{ flex: 1 }}>
         <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: C.dark }}>{title}</span>

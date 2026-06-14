@@ -120,7 +120,7 @@ export default function GoalDetailPage() {
         <Label>Recurring tasks</Label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {(goal.tasks || []).map((t: Task) => (
-            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: `1px solid ${C.border}`, borderRadius: 13, padding: '12px 14px' }}>
+            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.card, border: `1px solid ${C.border}`, borderRadius: 13, padding: '12px 14px' }}>
               <div>
                 <div style={{ fontSize: 14.5, color: C.dark }}>{t.name}</div>
                 <div style={{ fontSize: 12, color: C.muted, marginTop: 1 }}>{t.frequency || ''}{t.duration ? ` · ${t.duration}` : ''}</div>
@@ -184,7 +184,7 @@ function RecalibratePanel({ userId, goal, onClose, onApplied }: { userId: string
   }
 
   return (
-    <div style={{ marginTop: 18, background: '#fff', border: `1px solid ${C.border}`, borderRadius: 16, padding: 16 }}>
+    <div style={{ marginTop: 18, background: C.card, border: `1px solid ${C.border}`, borderRadius: 16, padding: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
         <h3 className="serif" style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Let&apos;s recalibrate</h3>
         <button onClick={onClose} style={{ color: C.faint, fontSize: 22 }}>×</button>

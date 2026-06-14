@@ -205,7 +205,7 @@ export default function CoachPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {SUGGESTIONS.map((s) => (
-                <button key={s} onClick={() => send(s)} style={{ textAlign: 'left', padding: '14px 16px', background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, fontSize: 14, color: C.dark }}>{s}</button>
+                <button key={s} onClick={() => send(s)} style={{ textAlign: 'left', padding: '14px 16px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, fontSize: 14, color: C.dark }}>{s}</button>
               ))}
             </div>
           </div>
@@ -226,7 +226,7 @@ export default function CoachPage() {
             ))}
             {sending && (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                <div style={{ padding: '13px 17px', background: '#fff', border: `1px solid ${C.border}`, borderRadius: 18, borderBottomLeftRadius: 5, display: 'flex', gap: 5 }}>
+                <div style={{ padding: '13px 17px', background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, borderBottomLeftRadius: 5, display: 'flex', gap: 5 }}>
                   {[0, 1, 2].map((d) => (<span key={d} className="dot" style={{ width: 7, height: 7, borderRadius: '50%', background: C.faint }} />))}
                 </div>
               </div>
@@ -239,7 +239,7 @@ export default function CoachPage() {
       {/* Command palette */}
       {showCmds && (
         <div style={{ padding: '0 14px 8px' }}>
-          <div style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
             {COMMANDS.map((c) => (
               <button key={c.cmd} onClick={() => c.active && setInput(c.cmd + ' ')}
                 style={{ width: '100%', textAlign: 'left', padding: '11px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: c.active ? 1 : 0.45, borderBottom: `1px solid ${C.border}` }}>
@@ -264,7 +264,7 @@ export default function CoachPage() {
         <textarea value={input} onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
           rows={1} placeholder="Message your coach…"
-          style={{ flex: 1, padding: '12px 14px', borderRadius: 16, border: `1px solid ${C.border}`, background: '#fff', fontSize: 16, outline: 'none', maxHeight: 110 }} />
+          style={{ flex: 1, padding: '12px 14px', borderRadius: 16, border: `1px solid ${C.border}`, background: C.card, fontSize: 16, outline: 'none', maxHeight: 110 }} />
         <button onClick={() => send()} disabled={!input.trim() || sending}
           style={{ width: 44, height: 44, borderRadius: '50%', background: input.trim() ? C.orange : C.faint, color: C.onAccent, fontSize: 19, flexShrink: 0 }}>↑</button>
       </div>
@@ -313,7 +313,7 @@ export default function CoachPage() {
                     : item.kind === 'nudge' ? { label: 'Nudge', color: C.orange, soft: C.orangeSoft }
                     : { label: 'Observation', color: '#1B7A5C', soft: '#D9F0E5' };
                   return (
-                    <div key={item.id} style={{ background: '#fff', border: `1px solid ${C.border}`, borderRadius: 15, padding: '14px 15px' }}>
+                    <div key={item.id} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 15, padding: '14px 15px' }}>
                       <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: tag.color, background: tag.soft, padding: '3px 9px', borderRadius: 7, marginBottom: 8 }}>{tag.label}</span>
                       <div style={{ fontSize: 14.5, lineHeight: 1.5, color: C.dark }}>{item.text}</div>
                     </div>

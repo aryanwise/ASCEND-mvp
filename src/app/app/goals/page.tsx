@@ -87,7 +87,7 @@ function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
   const a = area(goal.area);
   const missed = (goal.tasks || []).some((t) => (t.consecutive_misses || 0) >= 2);
   return (
-    <button onClick={onClick} style={{ width: '100%', textAlign: 'left', background: '#fff', border: `1px solid ${C.border}`, borderRadius: 18, overflow: 'hidden' }}>
+    <button onClick={onClick} style={{ width: '100%', textAlign: 'left', background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, overflow: 'hidden' }}>
       {missed && goal.status === 'active' && (
         <div style={{ background: '#FDDEDE', padding: '8px 16px', fontSize: 12.5, color: '#C62828', fontWeight: 600 }}>⚠️ Needs recalibration — tap to fix</div>
       )}
