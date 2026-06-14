@@ -1,9 +1,9 @@
 // Central design tokens + area config used across all screens.
 
 export const C = {
-  orange: '#C0392B',
+  orange: '#5A1022',
   caramel: '#DEAA6B',
-  onAccent: '#FBF9F4', // cream text on the deep sienna accent
+  onAccent: '#F3ECE2', // warm ivory text on burgundy // cream text on the deep sienna accent
   orangeSoft: '#F7EFE0',
   dark: '#201E1A',
   bg: '#FBF9F4',
@@ -32,7 +32,7 @@ export const AREAS: Record<AreaKey, AreaDef> = {
   mind:    { key: 'mind',    label: 'Mind',    color: '#1B6B7A', soft: '#D9EEF0', emoji: '🧠' },
   money:   { key: 'money',   label: 'Money',   color: '#2E7D32', soft: '#D9F0DB', emoji: '💰' },
   health:  { key: 'health',  label: 'Health',  color: '#C62828', soft: '#FDDEDE', emoji: '❤️' },
-  habits:  { key: 'habits',  label: 'Habits',  color: '#C0392B', soft: '#F7EFE0', emoji: '✨' },
+  habits:  { key: 'habits',  label: 'Habits',  color: '#5A1022', soft: '#F7EFE0', emoji: '✨' },
   custom:  { key: 'custom',  label: 'Custom',  color: '#6B6359', soft: '#EBE5D6', emoji: '🎯' },
 };
 
