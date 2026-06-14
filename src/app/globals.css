@@ -21,19 +21,30 @@
   --card-border: #E7E4DC;  /* its border */
   --accent-text: #5A1022;  /* burgundy text/label readable on card */
   --quote: #7A7366;        /* streak quote text */
+  /* area accents (light) */
+  --area-fitness: #1B7A5C; --area-fitness-soft: #E2F0EA;
+  --area-study: #3D4D8A;   --area-study-soft: #E8EBF8;
+  --area-career: #7B4FBF;  --area-career-soft: #EFE8FA;
+  --area-diet: #B8721C;    --area-diet-soft: #F8E6CB;
+  --area-mind: #1B6B7A;    --area-mind-soft: #DCEEF0;
+  --area-money: #2E7D32;   --area-money-soft: #DEF0DF;
+  --area-health: #C62828;  --area-health-soft: #FBE0E0;
+  --area-habits: #5A1022;  --area-habits-soft: #F3E7E9;
+  --area-custom: #6B6359;  --area-custom-soft: #ECEAE3;
+
 }
 
 [data-theme="dark"] {
   --orange: #7A1A2F;        /* brighter burgundy so it shows on dark */
   --on-accent: #FFFFFF;
   --caramel: #E0B57C;
-  --orange-soft: #2A1F1C;   /* deep tint for advice/alert headers */
+  --orange-soft: #2E2018;   /* warmer, cleaner advice/alert tint */
   --dark: #F2EDE4;          /* "dark" token = primary TEXT, so it's light here */
   --bg: #1A1714;            /* warm charcoal canvas */
-  --muted: #9A9182;
+  --muted: #A89F8E;
   --faint: #6E665B;
-  --border: #2E2925;
-  --card: #232019;          /* card surfaces sit just above the canvas */
+  --border: #3A332C;        /* a touch stronger so cards have an edge */
+  --card: #262019;          /* lifted so cards read against the canvas */
   --sand: #2A2620;
   --desk: #100E0C;
   --ink: #2A130F;          /* streak card in dark mode — warm dark, distinct from canvas */
@@ -42,6 +53,16 @@
   --card-border: #3A322A;
   --accent-text: #C77F8E;  /* lighter burgundy readable on dark card */
   --quote: #A89F92;
+  /* area accents (dark) — lifted/brighter so they read on charcoal, soft = deep muted tint */
+  --area-fitness: #5FC79E; --area-fitness-soft: #16322A;
+  --area-study: #8C9BD6;   --area-study-soft: #1E2540;
+  --area-career: #B79AE6;  --area-career-soft: #281E3A;
+  --area-diet: #E0A659;    --area-diet-soft: #33260F;
+  --area-mind: #5FB8C9;    --area-mind-soft: #142E33;
+  --area-money: #6FC074;   --area-money-soft: #16301A;
+  --area-health: #E8736F;  --area-health-soft: #371A1A;
+  --area-habits: #C77F8E;  --area-habits-soft: #2E1419;
+  --area-custom: #A89F92;  --area-custom-soft: #2A2620;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }

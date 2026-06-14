@@ -31,15 +31,15 @@ export type AreaKey =
 export interface AreaDef { key: AreaKey; label: string; color: string; soft: string; emoji: string; }
 
 export const AREAS: Record<AreaKey, AreaDef> = {
-  fitness: { key: 'fitness', label: 'Fitness', color: '#1B7A5C', soft: '#D9F0E5', emoji: '💪' },
-  study:   { key: 'study',   label: 'Study',   color: '#3D4D8A', soft: '#E8EBF8', emoji: '📚' },
-  career:  { key: 'career',  label: 'Career',  color: '#7B4FBF', soft: '#EFE8FA', emoji: '💼' },
-  diet:    { key: 'diet',    label: 'Diet',    color: '#B8721C', soft: '#F8E6CB', emoji: '🥗' },
-  mind:    { key: 'mind',    label: 'Mind',    color: '#1B6B7A', soft: '#D9EEF0', emoji: '🧠' },
-  money:   { key: 'money',   label: 'Money',   color: '#2E7D32', soft: '#D9F0DB', emoji: '💰' },
-  health:  { key: 'health',  label: 'Health',  color: '#C62828', soft: '#FDDEDE', emoji: '❤️' },
-  habits:  { key: 'habits',  label: 'Habits',  color: '#5A1022', soft: '#F7EFE0', emoji: '✨' },
-  custom:  { key: 'custom',  label: 'Custom',  color: '#6B6359', soft: '#EBE5D6', emoji: '🎯' },
+  fitness: { key: 'fitness', label: 'Fitness', color: 'var(--area-fitness)', soft: 'var(--area-fitness-soft)', emoji: '💪' },
+  study:   { key: 'study',   label: 'Study',   color: 'var(--area-study)', soft: 'var(--area-study-soft)', emoji: '📚' },
+  career:  { key: 'career',  label: 'Career',  color: 'var(--area-career)', soft: 'var(--area-career-soft)', emoji: '💼' },
+  diet:    { key: 'diet',    label: 'Diet',    color: 'var(--area-diet)', soft: 'var(--area-diet-soft)', emoji: '🥗' },
+  mind:    { key: 'mind',    label: 'Mind',    color: 'var(--area-mind)', soft: 'var(--area-mind-soft)', emoji: '🧠' },
+  money:   { key: 'money',   label: 'Money',   color: 'var(--area-money)', soft: 'var(--area-money-soft)', emoji: '💰' },
+  health:  { key: 'health',  label: 'Health',  color: 'var(--area-health)', soft: 'var(--area-health-soft)', emoji: '❤️' },
+  habits:  { key: 'habits',  label: 'Habits',  color: 'var(--area-habits)', soft: 'var(--area-habits-soft)', emoji: '✨' },
+  custom:  { key: 'custom',  label: 'Custom',  color: 'var(--area-custom)', soft: 'var(--area-custom-soft)', emoji: '🎯' },
 };
 
 export const AREA_LIST: AreaDef[] = Object.values(AREAS);
