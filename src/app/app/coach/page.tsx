@@ -150,9 +150,11 @@ export default function CoachPage() {
       const updated = [...next, { role: 'assistant' as const, content: data.reply || '…' }];
       setMessages(updated);
 
-      // Background memory extraction after 4+ messages
-      if (updated.length >= 4) {
-        fetch('/api/memory', {
+      // Background memory distillation — decoupled from the reply, fire-and-forget.
+      // Runs every 6 user turns so it doesn't fire on every message.
+      const userTurns = updated.filter((m) => m.role === 'user').length;
+      if (userTurns > 0 && userTurns % 6 === 0) {
+        fetch('/api/memory/distill', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, messages: updated }),
         }).catch(() => {});

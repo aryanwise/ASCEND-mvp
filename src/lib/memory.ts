@@ -187,7 +187,7 @@ export async function distillCoachSession(
         },
         { role: 'user', content: convo },
       ],
-      { json: true, temperature: 0.3, maxTokens: 400, timeoutMs: 4000, retries: 0 }
+      { json: true, temperature: 0.3, maxTokens: 400, timeoutMs: 7000, retries: 0 }
     );
 
     const out = parseFn<{ facts: string[]; summary: string; motivation: string }>(raw, {

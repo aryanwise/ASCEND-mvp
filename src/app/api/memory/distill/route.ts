@@ -6,9 +6,9 @@ import { distillCoachSession } from '@/lib/memory';
 export const runtime = 'nodejs';
 export const maxDuration = 10;
 
-// Legacy endpoint kept for backward-compatibility. The old ad-hoc extractor was
-// replaced by the curated, capped distiller in lib/memory.ts — this now just
-// delegates there so there is a single distillation path and no junk keys.
+// Background memory distillation, decoupled from the coach reply. The client
+// fires this after a chat turn; if it's slow or fails, the user's chat is
+// unaffected. Always returns ok so the client never surfaces an error.
 export async function POST(req: NextRequest) {
   try {
     const { userId, messages } = await req.json();

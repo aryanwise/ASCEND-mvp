@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { groq, parseJSON, personaTone, type GroqMsg } from '@/lib/groq';
-import { loadMemory, buildMemoryBlock, distillCoachSession } from '@/lib/memory';
+import { groq, personaTone, type GroqMsg } from '@/lib/groq';
+import { loadMemory, buildMemoryBlock } from '@/lib/memory';
 
 export const runtime = 'nodejs';
 export const maxDuration = 10;
@@ -58,14 +58,6 @@ ${memoryBlock}`;
     if (lastUser) rows.push({ user_id: userId, session_id: sid, session_title: sessionTitle || 'New conversation', role: 'user', content: lastUser.content });
     rows.push({ user_id: userId, session_id: sid, session_title: sessionTitle || 'New conversation', role: 'assistant', content: reply });
     await db.from('chat_logs').insert(rows);
-
-    // Distill durable memory from the conversation every few user turns (capped,
-    // strict, never throws). Awaited because serverless may freeze after response.
-    const userTurns = messages.filter((m: { role: string }) => m.role === 'user').length;
-    if (userTurns > 0 && userTurns % 6 === 0) {
-      const transcript = [...messages.slice(-15), { role: 'assistant', content: reply }];
-      await distillCoachSession(db, userId, transcript, groq, parseJSON);
-    }
 
     return NextResponse.json({ reply, sessionId: sid });
   } catch (e) {
