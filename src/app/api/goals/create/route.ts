@@ -22,20 +22,25 @@ export async function POST(req: NextRequest) {
       ? dialogue.map((d: { q: string; a: string }) => `Q: ${d.q}\nA: ${d.a}`).join('\n\n')
       : '';
 
-    const raw = await groq(
-      [
-        {
-          role: 'system',
-          content:
-            'You are Ascend, an elite goal architect. Turn the user\'s goal + context into a concrete plan with 3-5 recurring tasks. Account for their archetype/schedule and past failures. Tasks must be specific and doable. Return STRICT JSON: {"title":"short goal title","duration":"e.g. 12 weeks","summary":"one motivating sentence","tasks":[{"name":"...","frequency":"e.g. 3x/week","duration":"e.g. 30 min"}]}. 3-5 tasks. No preamble.',
-        },
-        {
-          role: 'user',
-          content: `Area: ${area}\nGoal: ${goal}\nArchetype: ${archetype || 'unknown'}\nMotivation: ${motivation || 'n/a'}\n\nIntake conversation summary:\n${qa}`,
-        },
-      ],
-      { json: true, temperature: 0.6, maxTokens: 900 }
-    );
+    let raw = '';
+    try {
+      raw = await groq(
+        [
+          {
+            role: 'system',
+            content:
+              'You are Ascend, an elite goal architect. Turn the user\'s goal + context into a concrete plan with 3-5 recurring tasks. Account for their archetype/schedule and past failures. Tasks must be specific and doable. Return STRICT JSON: {"title":"short goal title","duration":"e.g. 12 weeks","summary":"one motivating sentence","tasks":[{"name":"...","frequency":"e.g. 3x/week","duration":"e.g. 30 min"}]}. 3-5 tasks. No preamble.',
+          },
+          {
+            role: 'user',
+            content: `Area: ${area}\nGoal: ${goal}\nArchetype: ${archetype || 'unknown'}\nMotivation: ${motivation || 'n/a'}\n\nIntake conversation summary:\n${qa}`,
+          },
+        ],
+        { json: true, temperature: 0.6, maxTokens: 900 }
+      );
+    } catch {
+      raw = ''; // fall through to the default plan below — onboarding must not hard-fail
+    }
 
     const plan = parseJSON<Plan>(raw, {
       title: goal.slice(0, 60),

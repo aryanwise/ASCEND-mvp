@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { distillCheckins } from '@/lib/memory';
 
 export const runtime = 'nodejs';
 export const maxDuration = 10;
@@ -54,6 +55,9 @@ export async function POST(req: NextRequest) {
       const pct = Math.round((doneCount / taskIds.length) * 100);
       await db.from('goals').update({ completion_pct: pct }).eq('id', task.goal_id);
     }
+
+    // Update behavioral memory from recent check-ins (fire-and-forget, capped, never throws).
+    await distillCheckins(db, userId);
 
     return NextResponse.json({ ok: true, misses, needsRecalibration, goalId: task.goal_id });
   } catch (e) {

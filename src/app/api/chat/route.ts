@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { groq, personaTone, type GroqMsg } from '@/lib/groq';
+import { groq, parseJSON, personaTone, type GroqMsg } from '@/lib/groq';
+import { loadMemory, buildMemoryBlock, distillCoachSession } from '@/lib/memory';
 
 export const runtime = 'nodejs';
 export const maxDuration = 10;
@@ -14,37 +15,29 @@ export async function POST(req: NextRequest) {
 
     const db = supabaseAdmin();
 
-    const [{ data: profile }, { data: goals }, { data: memory }] = await Promise.all([
+    const [{ data: profile }, { data: goals }, mem] = await Promise.all([
       db.from('profiles').select('first_name, archetype').eq('id', userId).maybeSingle(),
       db.from('goals').select('title, area, duration, status, completion_pct').eq('user_id', userId).eq('status', 'active'),
-      db.from('user_memory').select('key, value').eq('user_id', userId),
+      loadMemory(db, userId),
     ]);
 
     const goalLines = (goals || [])
       .map((g) => `- ${g.title} (${g.area}, ${g.duration || 'ongoing'}, ${g.completion_pct}% complete)`)
       .join('\n') || '- (no active goals yet)';
 
-    const memLines = (memory || [])
-      .map((m) => `- ${m.key}: ${JSON.stringify(m.value)}`)
-      .join('\n') || '- (none yet)';
-
-    const memMap: Record<string, unknown> = {};
-    (memory || []).forEach((m) => { memMap[m.key] = m.value; });
-    const persona = (memMap.persona as string) || 'balanced';
-    const averageDay = (memMap.average_day as string) || '';
+    const persona = mem.persona;
+    const memoryBlock = buildMemoryBlock(mem, profile?.first_name || '');
 
     const system = `You are Ascend — a sharp accountability coach, not a generic chatbot. You help the user actually follow through. Be concise and human. Challenge excuses. Reference their goals and what you know about them. Never lecture in long paragraphs; keep replies tight.
 
 ${personaTone(persona)}
 
 USER: ${profile?.first_name || 'there'} (archetype: ${profile?.archetype || 'unknown'})
-${averageDay ? `THEIR TYPICAL DAY: ${averageDay}` : ''}
 
 ACTIVE GOALS:
 ${goalLines}
 
-USER MEMORY:
-${memLines}`;
+${memoryBlock}`;
 
     const recent: GroqMsg[] = messages
       .slice(-10)
@@ -65,6 +58,14 @@ ${memLines}`;
     if (lastUser) rows.push({ user_id: userId, session_id: sid, session_title: sessionTitle || 'New conversation', role: 'user', content: lastUser.content });
     rows.push({ user_id: userId, session_id: sid, session_title: sessionTitle || 'New conversation', role: 'assistant', content: reply });
     await db.from('chat_logs').insert(rows);
+
+    // Distill durable memory from the conversation every few user turns (capped,
+    // strict, never throws). Awaited because serverless may freeze after response.
+    const userTurns = messages.filter((m: { role: string }) => m.role === 'user').length;
+    if (userTurns > 0 && userTurns % 6 === 0) {
+      const transcript = [...messages.slice(-15), { role: 'assistant', content: reply }];
+      await distillCoachSession(db, userId, transcript, groq, parseJSON);
+    }
 
     return NextResponse.json({ reply, sessionId: sid });
   } catch (e) {

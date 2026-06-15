@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { groq, parseJSON, personaTone } from '@/lib/groq';
+import { loadMemory, buildSchedulingMemory } from '@/lib/memory';
 
 export const runtime = 'nodejs';
 export const maxDuration = 10;
@@ -17,16 +18,14 @@ export async function POST(req: NextRequest) {
     const isTune = mode === 'tune';
 
     const db = supabaseAdmin();
-    const [{ data: profile }, { data: goals }, { data: memory }] = await Promise.all([
+    const [{ data: profile }, { data: goals }, mem] = await Promise.all([
       db.from('profiles').select('archetype').eq('id', userId).maybeSingle(),
       db.from('goals').select('id, title, area, duration, tasks(id, name, frequency, duration)').eq('user_id', userId).eq('status', 'active'),
-      db.from('user_memory').select('key, value').eq('user_id', userId).in('key', ['persona', 'average_day']),
+      loadMemory(db, userId),
     ]);
 
-    const memMap: Record<string, unknown> = {};
-    (memory || []).forEach((m) => { memMap[m.key] = m.value; });
-    const persona = (memMap.persona as string) || 'balanced';
-    const averageDay = (memMap.average_day as string) || '';
+    const persona = mem.persona;
+    const schedulingMemory = buildSchedulingMemory(mem);
 
     // Which tasks are already completed today? Exclude them from the new plan.
     const allTaskIds: string[] = [];
@@ -68,18 +67,46 @@ export async function POST(req: NextRequest) {
       + `\n\n${personaTone(persona)} Apply this tone to the "advice" line.`;
 
     const userMsg = isTune
-      ? `Archetype: ${profile?.archetype || 'unknown'}\n${averageDay ? `Typical day: ${averageDay}\n` : ''}Energy: ${energy || 'Medium'}\nHours available: ${hours ?? 'unspecified'}\nMood: ${mood || 'neutral'}\n\nANYTHING SPECIFIC FOR TODAY (user's own words):\n${todayNote?.trim() || '(nothing extra)'}\n\nGOALS & TASKS:\n${goalCtx}`
-      : `Archetype: ${profile?.archetype || 'unknown'}\n${averageDay ? `Typical day: ${averageDay}\n` : ''}\nGOALS & TASKS (plan from these and their deadlines):\n${goalCtx}`;
+      ? `Archetype: ${profile?.archetype || 'unknown'}\n${schedulingMemory ? schedulingMemory + '\n' : ''}Energy: ${energy || 'Medium'}\nHours available: ${hours ?? 'unspecified'}\nMood: ${mood || 'neutral'}\n\nANYTHING SPECIFIC FOR TODAY (user's own words):\n${todayNote?.trim() || '(nothing extra)'}\n\nGOALS & TASKS:\n${goalCtx}`
+      : `Archetype: ${profile?.archetype || 'unknown'}\n${schedulingMemory ? schedulingMemory + '\n' : ''}\nGOALS & TASKS (plan from these and their deadlines):\n${goalCtx}`;
 
-    const raw = await groq(
-      [
-        { role: 'system', content: system },
-        { role: 'user', content: userMsg },
-      ],
-      { json: true, temperature: 0.6, maxTokens: 1100 }
-    );
+    let out: PlanOut;
+    try {
+      const raw = await groq(
+        [
+          { role: 'system', content: system },
+          { role: 'user', content: userMsg },
+        ],
+        { json: true, temperature: 0.6, maxTokens: 1100 }
+      );
+      out = parseJSON<PlanOut>(raw, { blocks: [], deferred: [], advice: 'Start with the most important thing first.' });
+    } catch {
+      out = { blocks: [], deferred: [], advice: '' };
+    }
 
-    const out = parseJSON<PlanOut>(raw, { blocks: [], deferred: [], advice: 'Start with the most important thing first.' });
+    // Safe fallback: if the AI returned nothing usable (timeout / bad JSON),
+    // build a simple sequential schedule from today's incomplete tasks so the
+    // user still gets a plan instead of an error.
+    if (!out.blocks || out.blocks.length === 0) {
+      const startHours = [6, 8, 10, 13, 15, 17, 19];
+      const pending: { id: string; name: string; area: string; duration?: string }[] = [];
+      (goals || []).forEach((g) => {
+        const tlist = (g as { tasks?: { id: string; name: string; duration?: string }[] }).tasks || [];
+        tlist.filter((t) => !completedTodayIds.has(t.id)).forEach((t) =>
+          pending.push({ id: t.id, name: t.name, area: g.area, duration: t.duration }));
+      });
+      out = {
+        blocks: pending.slice(0, startHours.length).map((t, i) => {
+          const h = startHours[i];
+          const label = h < 12 ? `${h}:00 AM` : h === 12 ? '12:00 PM' : `${h - 12}:00 PM`;
+          return { time: label, task: t.name, area: t.area, duration: t.duration || '', task_id: t.id };
+        }),
+        deferred: pending.length > startHours.length
+          ? pending.slice(startHours.length).map((t) => ({ task: t.name, reason: 'Saved for another day to keep today realistic.' }))
+          : [],
+        advice: 'Plan built from your tasks. Start with the first block.',
+      };
+    }
 
     const blocks = (out.blocks || []).map((b) => ({ ...b, done: false }));
 

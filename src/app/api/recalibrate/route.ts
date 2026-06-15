@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { groq, parseJSON, personaTone } from '@/lib/groq';
+import { loadMemory, buildRecalibrationMemory } from '@/lib/memory';
 
 export const runtime = 'nodejs';
 export const maxDuration = 10;
@@ -26,15 +27,17 @@ export async function POST(req: NextRequest) {
     }
 
     // propose
-    const [{ data: goal }, { data: memory }] = await Promise.all([
+    const [{ data: goal }, mem, { data: pastRecals }] = await Promise.all([
       db.from('goals').select('title, area, duration, tasks(name, frequency, duration, consecutive_misses)').eq('id', goalId).single(),
-      db.from('user_memory').select('key, value').eq('user_id', userId).in('key', ['persona', 'average_day']),
+      loadMemory(db, userId),
+      db.from('recalibrations').select('reason, ai_proposal, accepted, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(3),
     ]);
 
-    const memMap: Record<string, unknown> = {};
-    (memory || []).forEach((m) => { memMap[m.key] = m.value; });
-    const persona = (memMap.persona as string) || 'balanced';
-    const averageDay = (memMap.average_day as string) || '';
+    const persona = mem.persona;
+    const recalMemory = buildRecalibrationMemory(mem);
+    const pastStr = (pastRecals || [])
+      .map((r) => `- proposed "${(r.ai_proposal || '').slice(0, 80)}" (${r.accepted ? 'accepted' : 'not accepted'})`)
+      .join('\n');
 
     const tlist = (goal as { tasks?: { name: string; frequency?: string; consecutive_misses?: number }[] })?.tasks || [];
     const taskStr = tlist.map((t) => `- ${t.name} (${t.frequency || ''}${(t.consecutive_misses || 0) >= 2 ? ', MISSED 2× in a row' : ''})`).join('\n');
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
         },
         {
           role: 'user',
-          content: `Goal: ${goal?.title} (${goal?.area})\n${averageDay ? `Their typical day: ${averageDay}\n` : ''}Current tasks:\n${taskStr}\n${missedTask ? `The repeatedly-missed task: "${missedTask.name}"\n` : ''}Reason for missing: ${reason || 'unspecified'}`,
+          content: `Goal: ${goal?.title} (${goal?.area})\n${recalMemory ? recalMemory + '\n' : ''}Current tasks:\n${taskStr}\n${missedTask ? `The repeatedly-missed task: "${missedTask.name}"\n` : ''}Reason for missing: ${reason || 'unspecified'}${pastStr ? `\n\nWe already tried these recently — do NOT repeat them, go a different direction:\n${pastStr}` : ''}`,
         },
       ],
       { json: true, temperature: 0.6, maxTokens: 350 }

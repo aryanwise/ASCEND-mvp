@@ -7,7 +7,7 @@ export interface GroqMsg { role: 'system' | 'user' | 'assistant'; content: strin
 
 export async function groq(
   messages: GroqMsg[],
-  opts: { temperature?: number; json?: boolean; maxTokens?: number } = {}
+  opts: { temperature?: number; json?: boolean; maxTokens?: number; timeoutMs?: number; retries?: number } = {}
 ): Promise<string> {
   const key = process.env.GROQ_API_KEY;
   if (!key) {
@@ -23,21 +23,47 @@ export async function groq(
   };
   if (opts.json) body.response_format = { type: 'json_object' };
 
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${key}`,
-    },
-    body: JSON.stringify(body),
-  });
+  // Keep the timeout comfortably under the 10s Vercel limit so we can fail fast
+  // and (optionally) retry once rather than hanging until the platform kills us.
+  const timeoutMs = opts.timeoutMs ?? 7000;
+  const maxAttempts = (opts.retries ?? 1) + 1;
 
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Groq ${res.status}: ${t}`);
+  let lastErr: Error | null = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (!res.ok) {
+        const t = await res.text();
+        // 429/5xx are worth a retry; 4xx (bad request) is not.
+        if ((res.status === 429 || res.status >= 500) && attempt < maxAttempts) {
+          lastErr = new Error(`Groq ${res.status}: ${t}`);
+          continue;
+        }
+        throw new Error(`Groq ${res.status}: ${t}`);
+      }
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content ?? '';
+    } catch (e) {
+      clearTimeout(timer);
+      lastErr = e as Error;
+      // Retry on timeout/network; rethrow on the final attempt.
+      if (attempt < maxAttempts) continue;
+      throw lastErr;
+    }
   }
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? '';
+  throw lastErr ?? new Error('Groq call failed');
 }
 
 // Safely parse JSON the model returns, stripping code fences if present.
