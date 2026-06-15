@@ -1,6 +1,8 @@
 # Ascend — Memory Loop System Design (MVP)
 
-The goal: make the AI **actually learn from the user and remember it**, so the coach, day-planner, and interventions all get smarter over time. Right now the app *promises* this ("learns WHY you slip") but doesn't deliver it. This doc is the plan to close that gap. Kept short and practical — built for 10–20 users, not hypothetical scale.
+---
+
+The goal: make the AI **actually learn from the user and remember it**, so the coach, day-planner, and interventions all get smarter over time. Right now the app _promises_ this ("learns WHY you slip") but doesn't deliver it. This doc is the plan to close that gap. Kept short and practical — built for 10–20 users, not hypothetical scale.
 
 ---
 
@@ -20,17 +22,17 @@ We already do #3 partially. The gaps are #1 (signals are siloed) and #2 (distill
 
 Everything the AI "knows" about a user lives in `user_memory` as key→value rows. This is already the right design — we just need to actually fill it. Target keys:
 
-| Key | Written by | Holds |
-|---|---|---|
-| `persona` | settings | coaching tone |
-| `average_day` | settings | their real schedule |
-| `active_days` | streak | login-streak dates |
-| `inbox` | inbox | AI insight messages |
-| **`skip_patterns`** *(new)* | check-in distill | e.g. `{"too tired": 4, "no time": 2}` |
-| **`strong_days` / `weak_days`** *(new)* | check-in distill | days they actually follow through vs slip |
-| **`facts`** *(new)* | coach distill | short bullet facts learned from chats |
-| **`session_summaries`** *(new)* | coach distill | 1-line summary per past coach session |
-| **`motivation_summary`** *(new)* | coach distill | the deeper "why" in their words |
+| Key                                     | Written by       | Holds                                     |
+| --------------------------------------- | ---------------- | ----------------------------------------- |
+| `persona`                               | settings         | coaching tone                             |
+| `average_day`                           | settings         | their real schedule                       |
+| `active_days`                           | streak           | login-streak dates                        |
+| `inbox`                                 | inbox            | AI insight messages                       |
+| **`skip_patterns`** _(new)_             | check-in distill | e.g. `{"too tired": 4, "no time": 2}`     |
+| **`strong_days` / `weak_days`** _(new)_ | check-in distill | days they actually follow through vs slip |
+| **`facts`** _(new)_                     | coach distill    | short bullet facts learned from chats     |
+| **`session_summaries`** _(new)_         | coach distill    | 1-line summary per past coach session     |
+| **`motivation_summary`** _(new)_        | coach distill    | the deeper "why" in their words           |
 
 These are small JSON blobs. For 20 users this is nothing — no scale concern.
 
@@ -51,11 +53,13 @@ No new heavy infrastructure. The raw data is already landing.
 Two lightweight distillers that compress raw rows into `user_memory` facts. Both run **opportunistically** (on a natural trigger), not on a cron — simplest for an MVP with no background workers.
 
 ### A. Check-in distiller
+
 - **Trigger:** runs inside `/api/tasks/checkin` (fire-and-forget, after the response) OR when Home loads, throttled to once/day.
 - **What it does:** reads the last ~14 days of `daily_check_ins`, tallies skip reasons and which weekdays have the best/worst completion, writes `skip_patterns`, `strong_days`, `weak_days`.
 - **No AI needed** — it's just counting. Fast, free, reliable.
 
 ### B. Coach distiller
+
 - **Trigger:** at the end of a coach session (or every N messages), fire-and-forget.
 - **What it does:** sends the session transcript to Groq once with "extract durable facts + a 1-line summary + any motivation insight." Appends to `facts`, `session_summaries`, updates `motivation_summary`.
 - **Bounded:** keep `facts` to ~15 most-recent, `session_summaries` to ~10. Trim oldest. Keeps prompts small and costs flat.
