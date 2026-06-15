@@ -17,12 +17,12 @@ export async function POST(req: NextRequest) {
 
     const [{ data: profile }, { data: goals }, mem] = await Promise.all([
       db.from('profiles').select('first_name, archetype').eq('id', userId).maybeSingle(),
-      db.from('goals').select('title, area, duration, status, completion_pct').eq('user_id', userId).eq('status', 'active'),
+      db.from('goals').select('title, area, duration, status, completion_pct, motivation').eq('user_id', userId).eq('status', 'active'),
       loadMemory(db, userId),
     ]);
 
     const goalLines = (goals || [])
-      .map((g) => `- ${g.title} (${g.area}, ${g.duration || 'ongoing'}, ${g.completion_pct}% complete)`)
+      .map((g) => `- ${g.title} (${g.area}, ${g.duration || 'ongoing'}, ${g.completion_pct}% complete)${g.motivation ? `\n  their why: "${g.motivation}"` : ''}`)
       .join('\n') || '- (no active goals yet)';
 
     const memoryBlock = buildMemoryBlock(mem, profile?.first_name || '');
@@ -41,6 +41,7 @@ RULES:
 - When they give you an answer, build on it — don't re-litigate it.
 - Keep it tight and human: 1-3 short sentences usually. No long lectures.
 - Reference their goals and what you know about them naturally, not as a checklist.
+- If they say they've lost their reason / "don't know why I started", REMIND them of their stated why (it's in their goal and what you know about them) — don't ask them to tell you what you already know.
 - You're warm and on their side, but you don't let them off the hook when they're genuinely avoiding — that's the whole point of a coach. Warmth first, accountability close behind.
 
 USER: ${profile?.first_name || 'there'} (archetype: ${profile?.archetype || 'unknown'})

@@ -6,7 +6,7 @@ import { C, SERIF } from '@/lib/design';
 import { Logo, BottomSheet } from '@/components/ui';
 import type { ChatMessage } from '@/lib/types';
 
-interface Session { session_id: string; session_title: string; }
+interface Session { session_id: string; session_title: string; pinned?: boolean; }
 
 const SUGGESTIONS = [
   'I keep skipping my workouts — help me figure out why.',
@@ -67,6 +67,30 @@ export default function CoachPage() {
       const data = await res.json();
       setSessions((data.sessions as Session[]) || []);
     } catch { /* ignore */ }
+  }
+
+  async function renameSession(sid: string, current: string) {
+    const name = window.prompt('Rename conversation', current);
+    if (name == null) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setSessions((prev) => prev.map((s) => (s.session_id === sid ? { ...s, session_title: trimmed } : s)));
+    fetch('/api/coach-session-update', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, sessionId: sid, custom: trimmed }),
+    }).catch(() => {});
+  }
+
+  async function togglePin(sid: string, pinned: boolean) {
+    setSessions((prev) => {
+      const next = prev.map((s) => (s.session_id === sid ? { ...s, pinned: !pinned } : s));
+      next.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
+      return next;
+    });
+    fetch('/api/coach-session-update', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, sessionId: sid, pinned: !pinned }),
+    }).catch(() => {});
   }
 
   // Distill the current conversation now (used when leaving a session, so facts
@@ -292,10 +316,22 @@ export default function CoachPage() {
             <div className="scrollarea no-scrollbar" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {sessions.length === 0 && <div style={{ color: C.faint, fontSize: 13.5 }}>No past conversations.</div>}
               {sessions.map((s) => (
-                <button key={s.session_id} onClick={() => loadSession(s.session_id)}
-                  style={{ textAlign: 'left', padding: '11px 13px', borderRadius: 11, background: s.session_id === sessionId ? C.orangeSoft : '#fff', border: `1px solid ${C.border}`, fontSize: 13.5, color: C.dark, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {s.session_title || 'Conversation'}
-                </button>
+                <div key={s.session_id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 11px', borderRadius: 11, background: s.session_id === sessionId ? C.orangeSoft : '#fff', border: `1px solid ${C.border}` }}>
+                  <button onClick={() => loadSession(s.session_id)}
+                    style={{ flex: 1, minWidth: 0, textAlign: 'left', fontSize: 13.5, color: C.dark, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {s.pinned && <span style={{ fontSize: 11, flexShrink: 0 }}>📌</span>}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.session_title || 'Conversation'}</span>
+                  </button>
+                  <button onClick={() => togglePin(s.session_id, !!s.pinned)} aria-label="Pin"
+                    style={{ flexShrink: 0, fontSize: 13, color: s.pinned ? C.orange : C.faint, padding: 3 }}>
+                    {s.pinned ? '📌' : '📍'}
+                  </button>
+                  <button onClick={() => renameSession(s.session_id, s.session_title)} aria-label="Rename"
+                    style={{ flexShrink: 0, fontSize: 13, color: C.faint, padding: 3 }}>
+                    ✎
+                  </button>
+                </div>
               ))}
             </div>
           </div>
