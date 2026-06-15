@@ -175,17 +175,23 @@ export async function distillCoachSession(
       .map((m) => `${m.role === 'user' ? 'USER' : 'COACH'}: ${m.content}`)
       .join('\n');
 
+    // Give the model what we already know so it consolidates instead of repeating.
+    const mem = await loadMemory(db, userId);
+    const knownFacts = mem.facts.map((f) => f.text).join('; ') || '(none yet)';
+    const knownMotivation = mem.motivation_summary || '(none yet)';
+
     const raw = await groqFn(
       [
         {
           role: 'system',
           content:
-            'You extract DURABLE memory from a coaching conversation. Be strict. ' +
+            'You extract DURABLE memory from a coaching conversation. Be strict and avoid redundancy. ' +
             'Promote a fact ONLY if it is lasting and goal-relevant: hard constraints (e.g. "works night shifts"), stable preferences (e.g. "hates mornings"), commitments, or recurring blockers. ' +
-            'DO NOT promote: one-off moods, today-only states, small talk, or generic encouragement. If nothing qualifies, return empty arrays. ' +
-            'Return STRICT JSON: {"facts":["short durable fact", ...], "summary":"<=15 word recap of this session", "motivation":"their deeper why in 1-2 sentences, or empty string if not revealed"}. No preamble.',
+            'DO NOT promote: one-off moods, today-only states, small talk, generic encouragement, or anything ALREADY in the known facts (including reworded duplicates — e.g. do not add "commutes at 9pm" if "comes home around 9pm" is known). Only return genuinely NEW facts. If nothing new qualifies, return an empty facts array. ' +
+            'For motivation: only return a non-empty value if this conversation revealed a DEEPER or STRONGER "why" than the known one. If the known motivation is already as good or better, return an empty string (do NOT downgrade it to a shallow restatement of today\'s task). ' +
+            'Return STRICT JSON: {"facts":["short durable NEW fact", ...], "summary":"<=15 word recap of this session", "motivation":"a deeper why ONLY if stronger than known, else empty string"}. No preamble.',
         },
-        { role: 'user', content: convo },
+        { role: 'user', content: `KNOWN FACTS: ${knownFacts}\nKNOWN MOTIVATION: ${knownMotivation}\n\nCONVERSATION:\n${convo}` },
       ],
       { json: true, temperature: 0.3, maxTokens: 400, timeoutMs: 7000, retries: 0 }
     );
@@ -194,18 +200,19 @@ export async function distillCoachSession(
       facts: [], summary: '', motivation: '',
     });
 
-    const mem = await loadMemory(db, userId);
     const now = Date.now();
 
-    // facts: append new, dedupe by lowercased text, keep most-recent CAPS.facts
+    // facts: append new, dedupe by exact AND fuzzy match, keep most-recent CAPS.facts
     if (Array.isArray(out.facts) && out.facts.length) {
-      const existing = new Set(mem.facts.map((f) => f.text.trim().toLowerCase()));
-      const additions: Fact[] = out.facts
-        .filter((t) => typeof t === 'string' && t.trim())
-        .filter((t) => !existing.has(t.trim().toLowerCase()))
-        .map((t) => ({ text: t.trim(), ts: now }));
-      if (additions.length) {
-        const merged = [...mem.facts, ...additions].slice(-CAPS.facts);
+      const kept: Fact[] = [...mem.facts];
+      for (const t of out.facts) {
+        if (typeof t !== 'string' || !t.trim()) continue;
+        const candidate = t.trim();
+        const isDup = kept.some((f) => isSimilarFact(f.text, candidate));
+        if (!isDup) kept.push({ text: candidate, ts: now });
+      }
+      const merged = kept.slice(-CAPS.facts);
+      if (merged.length !== mem.facts.length) {
         await upsertMemory(db, userId, 'facts', merged);
       }
     }
@@ -216,11 +223,30 @@ export async function distillCoachSession(
       await upsertMemory(db, userId, 'session_summaries', merged);
     }
 
-    // motivation_summary: overwrite only when a non-empty one is found
+    // motivation_summary: only OVERWRITE when the model returns a stronger one.
+    // (The prompt is told to return empty if the known one is already as good,
+    // so we never downgrade a real "why" to a shallow task restatement.)
     if (out.motivation && out.motivation.trim()) {
       await upsertMemory(db, userId, 'motivation_summary', out.motivation.trim());
     }
   } catch {
     // fire-and-forget
   }
+}
+
+// Fuzzy fact dedupe: treats two facts as the same if one contains the other, or
+// if they share most of their meaningful words. Catches reworded near-duplicates
+// like "comes home around 9pm" vs "commutes at 9pm".
+function isSimilarFact(a: string, b: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+  const na = norm(a), nb = norm(b);
+  if (!na || !nb) return false;
+  if (na === nb || na.includes(nb) || nb.includes(na)) return true;
+  const stop = new Set(['the', 'a', 'an', 'to', 'at', 'on', 'in', 'of', 'and', 'is', 'around', 'about', 'usually', 'has', 'have']);
+  const wa = new Set(na.split(' ').filter((w) => w && !stop.has(w)));
+  const wb = nb.split(' ').filter((w) => w && !stop.has(w));
+  if (!wa.size || !wb.length) return false;
+  const overlap = wb.filter((w) => wa.has(w)).length;
+  // If most of the shorter fact's meaningful words appear in the other, call it a dup.
+  return overlap / Math.min(wa.size, wb.length) >= 0.6;
 }

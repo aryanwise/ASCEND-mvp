@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
       loadMemory(db, userId),
     ]);
 
-    const persona = mem.persona;
     const schedulingMemory = buildSchedulingMemory(mem);
 
     // Which tasks are already completed today? Exclude them from the new plan.
@@ -64,7 +63,7 @@ export async function POST(req: NextRequest) {
     const system = (isTune
       ? 'You are Ascend\'s day planner. Build a realistic time-blocked schedule that balances the user\'s active goal tasks/deadlines WITH the specific things they said they need to do today. Weigh them case by case — sometimes a one-off today item matters more than a recurring goal task, sometimes not. Respect their energy, available hours, mood, archetype, AND their typical daily commitments (classes, work hours, etc) — schedule goal work into the gaps around those, never on top of them. Do NOT overload them — if energy is low or hours are few, schedule less and DEFER the rest with a short honest reason. Each block needs a clock time (e.g. "9:00 AM"), the task, and its area key. Return STRICT JSON: {"blocks":[{"time":"9:00 AM","task":"...","area":"fitness","duration":"30 min","task_id":"copy the task_id shown in brackets, or null for one-off items"}],"deferred":[{"task":"...","reason":"..."}],"advice":"one sharp sentence"}. Area must be one of: fitness, study, career, diet, mind, money, health, habits, custom. No preamble.'
       : 'You are Ascend\'s day planner. Build a realistic time-blocked schedule purely from the user\'s active goal tasks and their deadlines/durations, respecting their archetype AND their typical daily commitments (classes, work hours, etc) — fit goal work into the free gaps around those, never on top of them. Prioritize tasks tied to nearer deadlines. Don\'t overload a day — DEFER what doesn\'t fit with a short honest reason. Each block needs a clock time (e.g. "9:00 AM"), the task, and its area key. Return STRICT JSON: {"blocks":[{"time":"9:00 AM","task":"...","area":"fitness","duration":"30 min","task_id":"copy the task_id shown in brackets, or null for one-off items"}],"deferred":[{"task":"...","reason":"..."}],"advice":"one sharp sentence"}. Area must be one of: fitness, study, career, diet, mind, money, health, habits, custom. No preamble.')
-      + `\n\n${personaTone(persona)} Apply this tone to the "advice" line.`;
+      + `\n\n${personaTone('balanced')} Apply this tone to the "advice" line.`;
 
     const userMsg = isTune
       ? `Archetype: ${profile?.archetype || 'unknown'}\n${schedulingMemory ? schedulingMemory + '\n' : ''}Energy: ${energy || 'Medium'}\nHours available: ${hours ?? 'unspecified'}\nMood: ${mood || 'neutral'}\n\nANYTHING SPECIFIC FOR TODAY (user's own words):\n${todayNote?.trim() || '(nothing extra)'}\n\nGOALS & TASKS:\n${goalCtx}`

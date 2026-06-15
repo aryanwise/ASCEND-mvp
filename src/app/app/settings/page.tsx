@@ -69,9 +69,9 @@ export default function SettingsPage() {
 
       <div className="scrollarea no-scrollbar" style={{ flex: 1, minHeight: 0, padding: 20, paddingBottom: 'calc(84px + env(safe-area-inset-bottom) + 20px)' }}>
         {/* Persona */}
-        <div style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, marginBottom: 6 }}>Adaptive voice</div>
+        <div style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, marginBottom: 6 }}>Notification voice</div>
         <p style={{ fontSize: 13.5, color: C.muted, margin: '0 0 14px', lineHeight: 1.5 }}>
-          How should Ascend talk to you? This shifts the tone everywhere — coaching, day plans, and interventions.
+          How should your nudges and reminders sound? Your coach always listens and adapts — this just sets the tone of the notifications that push you.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
           {PERSONAS.map((p) => (

@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
       db.from('recalibrations').select('reason, ai_proposal, accepted, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(3),
     ]);
 
-    const persona = mem.persona;
     const recalMemory = buildRecalibrationMemory(mem);
     const pastStr = (pastRecals || [])
       .map((r) => `- proposed "${(r.ai_proposal || '').slice(0, 80)}" (${r.accepted ? 'accepted' : 'not accepted'})`)
@@ -49,7 +48,7 @@ export async function POST(req: NextRequest) {
           role: 'system',
           content:
             'You are Ascend running the Two-Strike Rule: the user missed the same task twice, so you stop and recalibrate — no guilt, just a real change. Look at WHY (the reason + their typical day) and propose a concrete, specific adjustment: move it to a better time, cut the frequency/duration, swap it, or pause it for the week. Offer it as a clear choice when natural. Be specific about times if their schedule suggests a better slot. 2-3 sentences max. Examples of the vibe: "Mornings aren\'t working — move this to evenings, or pause it for the week?" / "Three days a week is too much right now. Let\'s drop to two and rebuild." Return JSON: {"proposal":"..."}. No preamble.'
-            + `\n\n${personaTone(persona)}`,
+            + `\n\n${personaTone('balanced')}`,
         },
         {
           role: 'user',

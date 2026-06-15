@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { groq, personaTone, type GroqMsg } from '@/lib/groq';
+import { groq, type GroqMsg } from '@/lib/groq';
 import { loadMemory, buildMemoryBlock } from '@/lib/memory';
 
 export const runtime = 'nodejs';
@@ -25,7 +25,6 @@ export async function POST(req: NextRequest) {
       .map((g) => `- ${g.title} (${g.area}, ${g.duration || 'ongoing'}, ${g.completion_pct}% complete)`)
       .join('\n') || '- (no active goals yet)';
 
-    const persona = mem.persona;
     const memoryBlock = buildMemoryBlock(mem, profile?.first_name || '');
 
     const system = `You are Ascend — a real accountability coach who knows this person. Talk like a sharp, caring human, not a chatbot and not a motivational poster.
@@ -42,9 +41,7 @@ RULES:
 - When they give you an answer, build on it — don't re-litigate it.
 - Keep it tight and human: 1-3 short sentences usually. No long lectures.
 - Reference their goals and what you know about them naturally, not as a checklist.
-- You can be honest and direct, but you're on their side. Warmth first, accountability second.
-
-${personaTone(persona)}
+- You're warm and on their side, but you don't let them off the hook when they're genuinely avoiding — that's the whole point of a coach. Warmth first, accountability close behind.
 
 USER: ${profile?.first_name || 'there'} (archetype: ${profile?.archetype || 'unknown'})
 
