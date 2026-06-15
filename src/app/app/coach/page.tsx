@@ -8,6 +8,16 @@ import type { ChatMessage } from '@/lib/types';
 
 interface Session { session_id: string; session_title: string; pinned?: boolean; }
 
+// Pushpin icon — filled when pinned, outline when not.
+function PinIcon({ filled, size = 16, color }: { filled: boolean; size?: number; color: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : 'none'} stroke={color} strokeWidth={filled ? 1.2 : 1.8} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+      <path d="M9 3h6l-1 6 3 3v2H7v-2l3-3-1-6z" />
+      <line x1="12" y1="14" x2="12" y2="21" />
+    </svg>
+  );
+}
+
 const SUGGESTIONS = [
   'I keep skipping my workouts — help me figure out why.',
   'Plan my week so I actually hit my goals.',
@@ -320,12 +330,12 @@ export default function CoachPage() {
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 11px', borderRadius: 11, background: s.session_id === sessionId ? C.orangeSoft : '#fff', border: `1px solid ${C.border}` }}>
                   <button onClick={() => loadSession(s.session_id)}
                     style={{ flex: 1, minWidth: 0, textAlign: 'left', fontSize: 13.5, color: C.dark, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {s.pinned && <span style={{ fontSize: 11, flexShrink: 0 }}>📌</span>}
+                    {s.pinned && <PinIcon filled size={12} color={C.orange} />}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.session_title || 'Conversation'}</span>
                   </button>
-                  <button onClick={() => togglePin(s.session_id, !!s.pinned)} aria-label="Pin"
-                    style={{ flexShrink: 0, fontSize: 13, color: s.pinned ? C.orange : C.faint, padding: 3 }}>
-                    {s.pinned ? '📌' : '📍'}
+                  <button onClick={() => togglePin(s.session_id, !!s.pinned)} aria-label={s.pinned ? 'Unpin' : 'Pin'}
+                    style={{ flexShrink: 0, padding: 4, display: 'flex' }}>
+                    <PinIcon filled={!!s.pinned} size={16} color={s.pinned ? C.orange : C.faint} />
                   </button>
                   <button onClick={() => renameSession(s.session_id, s.session_title)} aria-label="Rename"
                     style={{ flexShrink: 0, fontSize: 13, color: C.faint, padding: 3 }}>
