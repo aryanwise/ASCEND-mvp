@@ -13,12 +13,11 @@ export const C = {
   card: 'var(--card)',
   sand: 'var(--sand)',
   desk: 'var(--desk)',
-  ink: 'var(--ink)',
-  onInk: 'var(--on-ink)',
-  cardRaised: 'var(--card-raised)',
-  cardBorder: 'var(--card-border)',
-  accentText: 'var(--accent-text)',
-  quote: 'var(--quote)',
+  streakBg: 'var(--streak-bg)',
+  streakLabel: 'var(--streak-label)',
+  streakNum: 'var(--streak-num)',
+  streakDays: 'var(--streak-days)',
+  streakQuote: 'var(--streak-quote)',
 } as const;
 
 export const SERIF = 'Georgia, serif';

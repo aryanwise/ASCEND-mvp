@@ -133,15 +133,15 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Streak — elevated card, burgundy accents, logo as its own tile */}
-      <div style={{ background: C.cardRaised, border: `1px solid ${C.cardBorder}`, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+      {/* Streak — premium dark card, warm-grey label, logo as its own tile */}
+      <div style={{ background: C.streakBg, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', color: C.accentText }}>STREAK</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-            <span className="serif" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1, color: C.dark }}>{streak}</span>
-            <span style={{ fontSize: 14, color: C.muted }}>{streak === 1 ? 'day' : 'days'}</span>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', color: C.streakLabel }}>STREAK</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+            <span className="serif" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1, color: C.streakNum }}>{streak}</span>
+            <span style={{ fontSize: 14, color: C.streakDays }}>{streak === 1 ? 'day' : 'days'}</span>
           </div>
-          <div style={{ marginTop: 10, fontSize: 13, color: C.quote, lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
+          <div style={{ marginTop: 10, fontSize: 13, color: C.streakQuote, lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
             &ldquo;{quote}&rdquo;
           </div>
         </div>

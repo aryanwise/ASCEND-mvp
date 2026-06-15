@@ -22,24 +22,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function () {
-                try {
-                  var m = document.cookie.match(/(?:^|; )ascend-theme=([^;]+)/);
-                  var pref = m ? decodeURIComponent(m[1]) : 'light';
-                  document.documentElement.setAttribute('data-theme', pref === 'dark' ? 'dark' : 'light');
-                } catch (e) {
-                  document.documentElement.setAttribute('data-theme', 'light');
-                }
-              })();
-            `,
-          }}
-        />
-      </head>
+    <html lang="en">
       <body>
         <AuthProvider>{children}</AuthProvider>
         <script

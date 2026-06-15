@@ -18,13 +18,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Keep the theme live if the OS flips while the app is open (system mode).
-  useEffect(() => {
-    let cleanup = () => {};
-    import('@/lib/theme').then((m) => { cleanup = m.watchSystemTheme(); });
-    return () => cleanup();
-  }, []);
-
   useEffect(() => {
     (async () => {
       const session = await waitForSession();
