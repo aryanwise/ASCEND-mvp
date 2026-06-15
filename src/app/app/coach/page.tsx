@@ -69,7 +69,18 @@ export default function CoachPage() {
     } catch { /* ignore */ }
   }
 
+  // Distill the current conversation now (used when leaving a session, so facts
+  // aren't lost if the message count didn't land on a multiple of 6). Fire-and-forget.
+  function distillNow(msgs: ChatMessage[]) {
+    if (!userId || msgs.filter((m) => m.role === 'user').length < 4) return;
+    fetch('/api/memory/distill', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, messages: msgs }),
+    }).catch(() => {});
+  }
+
   async function loadSession(sid: string) {
+    distillNow(messages); // capture the session we're leaving
     try {
       const res = await fetch('/api/coach-messages', {
         method: 'POST',
@@ -84,6 +95,7 @@ export default function CoachPage() {
   }
 
   function newChat() {
+    distillNow(messages); // capture the session we're leaving
     setMessages([]);
     setSessionId(`s_${Date.now()}`);
     setSidebar(false);
