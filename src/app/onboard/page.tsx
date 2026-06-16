@@ -140,6 +140,12 @@ export default function OnboardPage() {
       });
       if (!gRes.ok) { const d = await gRes.json().catch(() => ({})); throw new Error(d.error || 'Could not build your plan.'); }
 
+      // Seed a sensible default day-plan delivery time (editable in Settings).
+      fetch('/api/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'save', persona: 'balanced', averageDay: '', planTime: '07:00' }),
+      }).catch(() => {});
+
       window.location.href = '/app?onboarded=1';
     } catch (e) {
       setErr((e as Error).message || 'Something went wrong.');

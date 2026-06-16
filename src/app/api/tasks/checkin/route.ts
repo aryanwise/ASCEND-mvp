@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { distillCheckins } from '@/lib/memory';
+import { refreshGoalCompletion } from '@/lib/pacing';
 
 export const runtime = 'nodejs';
 export const maxDuration = 10;
@@ -30,6 +31,10 @@ export async function POST(req: NextRequest) {
     if (completed) {
       misses = 0;
       await db.from('tasks').update({ consecutive_misses: 0, last_completed_at: new Date().toISOString() }).eq('id', taskId);
+      // Completing a task clears any pending rollover for it.
+      await db.from('deferred_tasks')
+        .update({ status: 'done', resolved_at: new Date().toISOString() })
+        .eq('user_id', userId).eq('task_id', taskId).eq('status', 'pending');
     } else if (skipReason) {
       misses = misses + 1;
       await db.from('tasks').update({ consecutive_misses: misses }).eq('id', taskId);
@@ -42,24 +47,13 @@ export async function POST(req: NextRequest) {
       await db.from('goals').update({ needs_recalibration: true }).eq('id', task.goal_id);
     }
 
-    // Recompute goal completion %
-    const { data: goalTasks } = await db.from('tasks').select('id').eq('goal_id', task.goal_id);
-    const taskIds = (goalTasks || []).map((t) => t.id);
-    if (taskIds.length) {
-      const { data: dones } = await db
-        .from('daily_check_ins')
-        .select('task_id, completed')
-        .in('task_id', taskIds)
-        .eq('date', date);
-      const doneCount = (dones || []).filter((d) => d.completed).length;
-      const pct = Math.round((doneCount / taskIds.length) * 100);
-      await db.from('goals').update({ completion_pct: pct }).eq('id', task.goal_id);
-    }
+    // Recompute goal completion % with the honest pacing model (done vs expected-so-far).
+    const pct = await refreshGoalCompletion(db, userId, task.goal_id);
 
     // Update behavioral memory from recent check-ins (fire-and-forget, capped, never throws).
     await distillCheckins(db, userId);
 
-    return NextResponse.json({ ok: true, misses, needsRecalibration, goalId: task.goal_id });
+    return NextResponse.json({ ok: true, misses, needsRecalibration, goalId: task.goal_id, completionPct: pct });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

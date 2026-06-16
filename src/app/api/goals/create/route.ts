@@ -54,6 +54,19 @@ export async function POST(req: NextRequest) {
 
     const db = supabaseAdmin();
 
+    // Parse duration weeks (e.g. "24 weeks" -> 24) for pacing + a real deadline.
+    const durWeeks = (() => {
+      const m = String(plan.duration || '').match(/(\d+)/);
+      const n = m ? parseInt(m[1], 10) : 12;
+      // If duration was given in months, convert; otherwise treat as weeks.
+      return /month/i.test(String(plan.duration || '')) ? n * 4 : n;
+    })();
+    const startISO = new Date().toISOString().slice(0, 10);
+    const targetISO = (() => {
+      const d = new Date(); d.setDate(d.getDate() + durWeeks * 7);
+      return d.toISOString().slice(0, 10);
+    })();
+
     const { data: goalRow, error: gErr } = await db
       .from('goals')
       .insert({
@@ -61,6 +74,9 @@ export async function POST(req: NextRequest) {
         title: plan.title || goal.slice(0, 60),
         area,
         duration: plan.duration || null,
+        duration_weeks: durWeeks,
+        start_date: startISO,
+        target_date: targetISO,
         motivation: motivation || null,
         plan_json: plan,
       })
@@ -74,6 +90,13 @@ export async function POST(req: NextRequest) {
       name: t.name,
       frequency: t.frequency || null,
       duration: t.duration || null,
+      per_week: (() => {
+        const m = String(t.frequency || '').match(/(\d+)\s*x/i);
+        if (m) return parseInt(m[1], 10);
+        if (/daily/i.test(String(t.frequency || ''))) return 7;
+        if (/weekly/i.test(String(t.frequency || ''))) return 1;
+        return 1;
+      })(),
     }));
     if (tasks.length) {
       const { error: tErr } = await db.from('tasks').insert(tasks);

@@ -103,7 +103,14 @@ function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
         <div style={{ marginTop: 12, height: 8, background: C.sand, borderRadius: 6, overflow: 'hidden' }}>
           <div style={{ height: '100%', width: `${goal.completion_pct}%`, background: a.color, borderRadius: 6 }} />
         </div>
-        <div style={{ fontSize: 12, color: C.muted, marginTop: 5 }}>{goal.completion_pct}% complete</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 5 }}>
+          <span style={{ fontSize: 12, color: C.muted }}>{goal.completion_pct}% of expected pace</span>
+          {(goal.deferred_count ?? 0) > 0 && (
+            <span style={{ fontSize: 11.5, fontWeight: 600, color: C.orange, background: C.orangeSoft, borderRadius: 8, padding: '3px 8px' }}>
+              {goal.deferred_count} owed
+            </span>
+          )}
+        </div>
       </div>
     </button>
   );

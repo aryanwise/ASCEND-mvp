@@ -20,7 +20,20 @@ export async function POST(req: NextRequest) {
       .order('created_at', { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ goals: data || [] });
+
+    // Attach pending deferred (rollover) count per goal so the UI can surface it.
+    const goals = data || [];
+    if (goals.length) {
+      const { data: defs } = await db
+        .from('deferred_tasks')
+        .select('goal_id')
+        .eq('user_id', userId)
+        .eq('status', 'pending');
+      const counts: Record<string, number> = {};
+      (defs || []).forEach((d) => { counts[d.goal_id] = (counts[d.goal_id] || 0) + 1; });
+      goals.forEach((g: { id: string; deferred_count?: number }) => { g.deferred_count = counts[g.id] || 0; });
+    }
+    return NextResponse.json({ goals });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

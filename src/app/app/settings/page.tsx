@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState('');
   const [persona, setPersona] = useState('balanced');
   const [averageDay, setAverageDay] = useState('');
+  const [planTime, setPlanTime] = useState('07:00');
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -33,6 +34,7 @@ export default function SettingsPage() {
         const data = await res.json();
         setPersona(data.persona || 'balanced');
         setAverageDay(data.averageDay || '');
+        setPlanTime(data.planTime || '07:00');
       } catch { /* ignore */ }
       setLoaded(true);
     });
@@ -44,7 +46,7 @@ export default function SettingsPage() {
     try {
       await fetch('/api/settings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action: 'save', persona, averageDay: averageDay.trim() }),
+        body: JSON.stringify({ userId, action: 'save', persona, averageDay: averageDay.trim(), planTime }),
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -90,6 +92,14 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
+
+        {/* Day plan time */}
+        <div style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, marginBottom: 6 }}>Day plan delivery</div>
+        <p style={{ fontSize: 13.5, color: C.muted, margin: '0 0 12px', lineHeight: 1.5 }}>
+          When should your AI day plan be ready each morning? You&apos;ll get it at this time (and a notification once those are on).
+        </p>
+        <input type="time" value={planTime} onChange={(e) => setPlanTime(e.target.value)}
+          style={{ fontSize: 16, padding: '12px 14px', borderRadius: 12, border: `1px solid ${C.border}`, background: C.card, color: C.dark, marginBottom: 28, width: '100%' }} />
 
         {/* Average day */}
         <div style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.muted, marginBottom: 6 }}>Your average day</div>

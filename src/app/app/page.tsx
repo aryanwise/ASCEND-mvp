@@ -20,6 +20,8 @@ export default function HomePage() {
   const [blocks, setBlocks] = useState<(DayBlock & { done?: boolean })[]>([]);
   const [deferred, setDeferred] = useState<DeferredItem[]>([]);
   const [advice, setAdvice] = useState('');
+  const [deferredOpen, setDeferredOpen] = useState(false);
+  const [allDone, setAllDone] = useState(false);
   const [planLoading, setPlanLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -85,6 +87,7 @@ export default function HomePage() {
       setBlocks((data.blocks || []).map((b: DayBlock) => ({ ...b, done: false })));
       setDeferred(data.deferred || []);
       setAdvice(data.advice || '');
+      setAllDone(!!data.allDone);
     } catch { /* ignore */ }
     setPlanLoading(false);
   }
@@ -133,16 +136,17 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Streak — premium dark card, warm-grey label, logo as its own tile */}
-      <div style={{ background: C.streakBg, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ flex: 1 }}>
+      {/* Streak — premium dark card, fixed size, shows the AI's advice for today
+          (falls back to a motivational quote when there's no plan advice yet). */}
+      <div style={{ background: C.streakBg, borderRadius: 20, padding: 18, display: 'flex', alignItems: 'center', gap: 16, minHeight: 132 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', color: C.streakLabel }}>STREAK</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
             <span className="serif" style={{ fontSize: 34, fontWeight: 700, lineHeight: 1, color: C.streakNum }}>{streak}</span>
             <span style={{ fontSize: 14, color: C.streakDays }}>{streak === 1 ? 'day' : 'days'}</span>
           </div>
-          <div style={{ marginTop: 10, fontSize: 13, color: C.streakQuote, lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF }}>
-            &ldquo;{quote}&rdquo;
+          <div style={{ marginTop: 10, fontSize: 13, color: C.streakQuote, lineHeight: 1.45, fontStyle: 'italic', fontFamily: SERIF, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {advice ? advice : `\u201c${quote}\u201d`}
           </div>
         </div>
         <button onClick={() => setQuote((q) => nextQuote(q))} style={{ flexShrink: 0 }} aria-label="New motivation">
@@ -161,11 +165,13 @@ export default function HomePage() {
           </button>
         </div>
 
-        {advice && (
-          <div style={{ padding: '12px 14px', background: C.orangeSoft, borderRadius: 13, fontSize: 14, color: C.dark, marginBottom: 12, lineHeight: 1.5 }}>💡 {advice}</div>
-        )}
-
-        {hasPlan ? (
+        {allDone && blocks.length === 0 ? (
+          <div style={{ padding: '26px 20px', borderRadius: 16, background: C.streakBg, textAlign: 'center' }}>
+            <div style={{ fontSize: 30, marginBottom: 8 }}>✓</div>
+            <div className="serif" style={{ fontSize: 18, fontWeight: 600, color: C.streakNum, marginBottom: 4 }}>All done for today</div>
+            <div style={{ fontSize: 13.5, color: C.streakQuote, lineHeight: 1.5 }}>You&apos;ve finished everything. Rest up — let&apos;s get back at it tomorrow.</div>
+          </div>
+        ) : hasPlan ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {blocks.map((b, i) => {
               const a = area(b.area);
@@ -193,15 +199,21 @@ export default function HomePage() {
 
         {deferred.length > 0 && (
           <div style={{ marginTop: 14 }}>
-            <Label>Deferred</Label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {deferred.map((d, i) => (
-                <div key={i} style={{ background: C.sand, borderRadius: 12, padding: '10px 13px' }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark }}>{d.task}</div>
-                  <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{d.reason}</div>
-                </div>
-              ))}
-            </div>
+            <button onClick={() => setDeferredOpen((o) => !o)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 13px', background: C.sand, borderRadius: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.muted }}>Deferred · {deferred.length}</span>
+              <span style={{ fontSize: 12, color: C.muted, transform: deferredOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}>▾</span>
+            </button>
+            {deferredOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 7 }}>
+                {deferred.map((d, i) => (
+                  <div key={i} style={{ background: C.sand, borderRadius: 12, padding: '10px 13px' }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: C.dark }}>{d.task}</div>
+                    <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{d.reason}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

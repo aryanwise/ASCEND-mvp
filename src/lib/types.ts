@@ -30,6 +30,8 @@ export interface Goal {
   completion_pct: number;
   plan_json: unknown;
   created_at: string;
+  target_date?: string | null;
+  deferred_count?: number;
   tasks?: Task[];
 }
 
