@@ -56,7 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Track how much the keyboard covers (the "keyboard inset") and expose it as
   // --kb so the chat input / sheets can lift to sit just above the keyboard —
-  // like Gemini — WITHOUT shrinking the whole shell (which made the nav float)..
+  // like Gemini — WITHOUT shrinking the whole shell (which made the nav float).
   useEffect(() => {
     const vv = window.visualViewport;
     const update = () => {

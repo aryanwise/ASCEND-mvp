@@ -27,10 +27,13 @@ export async function GET(req: NextRequest) {
     .select('user_id, value')
     .eq('key', 'plan_time');
 
-  const due = (prefs || []).filter((p) => {
-    const t = String(p.value || '');
-    return t.slice(0, 2) === hh;
-  });
+  // HOBBY PLAN NOTE: this cron runs once daily (Hobby can't do hourly). So we
+  // generate for ALL users who set a plan_time and don't yet have today's
+  // scheduled plan — a daily pre-warm. On Pro you can switch vercel.json back to
+  // hourly ("0 * * * *") and re-enable per-hour matching (commented below) to
+  // honor each user's exact chosen time.
+  const due = (prefs || []);
+  // Per-hour matching (Pro): const due = (prefs || []).filter((p) => String(p.value || '').slice(0, 2) === hh);
 
   const origin = new URL(req.url).origin;
   let generated = 0;
